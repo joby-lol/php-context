@@ -4,11 +4,14 @@ namespace Joby\ContextInjection\Invoker;
 
 use Closure;
 use InvalidArgumentException;
+use Joby\ContextInjection\Config\Config;
 use Joby\ContextInjection\Container;
 use ReflectionException;
 use ReflectionFunction;
 use ReflectionMethod;
 use ReflectionParameter;
+use ReflectionUnionType;
+use RuntimeException;
 
 /**
  * Utility class for reflection and invocation of classes and functions, used to
@@ -67,12 +70,6 @@ class DefaultInvoker implements Invoker
                 $args[] = $hook->value;
                 continue;
             }
-            // look for a ParameterValue attribute and use its value if it exists
-            $attr = $param->getAttributes(ParameterValue::class);
-            if (count($attr) > 0) {
-                $args[] = $attr[0]->newInstance()->getValue();
-                continue;
-            }
             // if there is no ParameterValue attribute, we need to get the value
             // first look for a ParameterCategory attribute so we can determine the category
             $attr = $param->getAttributes(ParameterCategory::class);
@@ -81,6 +78,27 @@ class DefaultInvoker implements Invoker
                 $category = $attr[0]->newInstance()->category;
             } else {
                 $category = 'default';
+            }
+            // look for a ParameterConfigValue attribute and use it to get a value from Config if it exists
+            $attr = $param->getAttributes(ParameterConfigValue::class);
+            if (count($attr) > 0) {
+                $config = $this->container->get(Config::class);
+                $key = $attr[0]->newInstance()->key;
+                if (!$config->has($key)) {
+                    if ($param->isOptional()) {
+                        $args[] = $param->getDefaultValue();
+                        continue;
+                    }
+                    throw new RuntimeException(sprintf(
+                        'Error building argument for parameter "%s": Config key "%s" does not exist.',
+                        $param->getName(),
+                        $key,
+                    ));
+                }
+                $value = $config->get($key);
+                $this->validateConfigValueType($value, $key, $param);
+                $args[] = $value;
+                continue;
             }
             // get value and add it to the args list
             $args[] = $this->container->get($type, $category);
@@ -106,12 +124,54 @@ class DefaultInvoker implements Invoker
     }
 
     /**
+     * Validate that a config value is of the type expected by the parameter and throw an exception
+     * if it is an invalid/unexpected type.
+     */
+    protected function validateConfigValueType(mixed $value, string $key, ReflectionParameter $param): void
+    {
+        $type = $param->getType();
+        if (is_null($value) && $type->allowsNull()) return;
+        if ($type instanceof ReflectionUnionType) {
+            $types = $type->getTypes();
+        } else {
+            $types = [$type];
+        }
+        foreach ($types as $t) {
+            $typeName = $t->getName();
+            $valid = match ($typeName) {
+                'int' => is_int($value),
+                'string' => is_string($value),
+                'float' => is_float($value),
+                'bool' => is_bool($value),
+                'array' => is_array($value),
+                'false' => $value === false,
+                default => $value instanceof $typeName
+            };
+            if ($valid) {
+                return;
+            }
+        }
+        $typeString = array_map(fn($t) => $t->getName(), $types);
+        sort($typeString);
+        $typeString = implode('|', $typeString);
+        if ($type->allowsNull()) $typeString .= '|null';
+        throw new RuntimeException(sprintf(
+            'Config value for parameter "%s" (%s) must be of type %s, got %s',
+            $param->getName(),
+            $key,
+            $typeString,
+            get_debug_type($value)
+        ));
+    }
+
+    /**
      * @template T of object
      * @param callable(mixed...):T $fn
      * @return T|object
      * @throws ReflectionException
      */
-    public function execute(callable $fn): mixed
+    public
+    function execute(callable $fn): mixed
     {
         assert(is_string($fn) || $fn instanceof Closure, 'The provided callable must be a string or a Closure.');
         $reflection = new ReflectionFunction($fn);

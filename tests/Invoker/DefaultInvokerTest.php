@@ -2,11 +2,14 @@
 
 namespace Joby\ContextInjection\Invoker;
 
+use Joby\ContextInjection\Config\Config;
+use Joby\ContextInjection\Config\DefaultConfig;
 use Joby\ContextInjection\Container;
 use Joby\ContextInjection\TestClasses\TestClass_requires_A_and_B;
 use Joby\ContextInjection\TestClasses\TestClassA;
 use Joby\ContextInjection\TestClasses\TestClassB;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
 class DefaultInvokerTest extends TestCase
 {
@@ -119,6 +122,238 @@ class DefaultInvokerTest extends TestCase
         $this->assertEquals($a, $c->a);
         $this->assertEquals($b, $c->b);
     }
+
+    public function testParameterCategoryAttribute(): void
+    {
+        $con = new Container();
+        $inv = new DefaultInvoker($con);
+        $con->register(TestClassA::class);
+        $con->register(TestClassA::class, 'secondary');
+        $this->assertNotEquals(
+            $con->get(TestClassA::class),
+            $con->get(TestClassA::class, 'secondary')
+        );
+        $this->assertEquals(
+            $con->get(TestClassA::class),
+            $inv->execute(function (TestClassA $a) {
+                return $a;
+            })
+        );
+        $this->assertEquals(
+            $con->get(TestClassA::class, 'secondary'),
+            $inv->execute(function (#[ParameterCategory('secondary')] TestClassA $a) {
+                return $a;
+            })
+        );
+    }
+
+    public function testParameterConfigValueAttribute(): void
+    {
+        $con = new Container();
+        $inv = new DefaultInvoker($con);
+        $config = $con->get(Config::class);
+        $config->set('test_key', 'test_value');
+        $this->assertEquals(
+            'test_value',
+            $inv->execute(function (
+                #[ParameterConfigValue('test_key')] string $value
+            ) {
+                return $value;
+            })
+        );
+        // also test it with a non-default category config object
+        $config2 = new DefaultConfig();
+        $config2->set('test_key', 'test_value2');
+        $con->register($config2, 'test_category');
+        $this->assertEquals(
+            'test_value',
+            $inv->execute(function (
+                #[ParameterCategory('test_category')]
+                #[ParameterConfigValue('test_key')]
+                string $value
+            ) {
+                return $value;
+            })
+        );
+    }
+
+    public function testOptionalConfigParameters(): void
+    {
+        $con = new Container();
+        $inv = new DefaultInvoker($con);
+
+        // Test with default value when config key doesn't exist
+        $result = $inv->execute(function (
+            #[ParameterConfigValue('missing.key')]
+            string $param = 'default value'
+        ) {
+            return $param;
+        });
+
+        $this->assertEquals('default value', $result);
+
+        // Test that config value overrides default when present
+        $config = $con->get(Config::class);
+        $config->set('existing.key', 'config value');
+
+        $result = $inv->execute(function (
+            #[ParameterConfigValue('existing.key')]
+            string $param = 'default value'
+        ) {
+            return $param;
+        });
+
+        $this->assertEquals('config value', $result);
+    }
+
+    public function testConfigTypeValidation(): void
+    {
+        $con = new Container();
+        $inv = new DefaultInvoker($con);
+        $config = $con->get(Config::class);
+
+        // Set up test values
+        $config->set('string.key', 'string value');
+        $config->set('int.key', 42);
+        $config->set('bool.key', true);
+        $config->set('array.key', ['test']);
+
+        // Test correct types pass validation
+        $this->assertEquals('string value', $inv->execute(
+            fn(#[ParameterConfigValue('string.key')] string $param) => $param
+        ));
+
+        $this->assertEquals(42, $inv->execute(
+            fn(#[ParameterConfigValue('int.key')] int $param) => $param
+        ));
+
+        $this->assertTrue($inv->execute(
+            fn(#[ParameterConfigValue('bool.key')] bool $param) => $param
+        ));
+
+        $this->assertEquals(['test'], $inv->execute(
+            fn(#[ParameterConfigValue('array.key')] array $param) => $param
+        ));
+    }
+
+    public function testConfigTypeValidationFailures(): void
+    {
+        $con = new Container();
+        $inv = new DefaultInvoker($con);
+        $config = $con->get(Config::class);
+
+        // Set string value but try to use as int
+        $config->set('wrong.type', 'not an integer');
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Config value for parameter "param" (wrong.type) must be of type int, got string');
+
+        $inv->execute(function (
+            #[ParameterConfigValue('wrong.type')]
+            int $param
+        ) {
+        });
+    }
+
+    public function testNullableConfigParameters(): void
+    {
+        $con = new Container();
+        $inv = new DefaultInvoker($con);
+        $config = $con->get(Config::class);
+
+        // Test that null is allowed for nullable parameters
+        $config->set('nullable.key', null);
+
+        $result = $inv->execute(function (
+            #[ParameterConfigValue('nullable.key')]
+            ?string $param
+        ) {
+            return $param;
+        });
+
+        $this->assertNull($result);
+    }
+
+    public function testMissingRequiredConfigParameter(): void
+    {
+        $con = new Container();
+        $inv = new DefaultInvoker($con);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Error building argument for parameter "param": Config key "missing.key" does not exist.');
+
+        $inv->execute(function (
+            #[ParameterConfigValue('missing.key')]
+            string $param
+        ) {
+        });
+    }
+
+    public function testUnionTypesWithConfig(): void
+    {
+        $con = new Container();
+        $inv = new DefaultInvoker($con);
+        $config = $con->get(Config::class);
+
+        // Test int|string union type with int value
+        $config->set('union.key', 42);
+        $result = $inv->execute(function (
+            #[ParameterConfigValue('union.key')]
+            int|string $param
+        ) {
+            return $param;
+        });
+        $this->assertEquals(42, $result);
+
+        // Test int|string union type with string value
+        $config->set('union.key', 'test');
+        $result = $inv->execute(function (
+            #[ParameterConfigValue('union.key')]
+            int|string $param
+        ) {
+            return $param;
+        });
+        $this->assertEquals('test', $result);
+
+        // Test int|string union type with an invalid value
+        $config->set('union.key', true);
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Config value for parameter "param" (union.key) must be of type int|string, got bool');
+        $inv->execute(function (
+            #[ParameterConfigValue('union.key')]
+            int|string $param
+        ) {
+        });
+    }
+
+    public function testNullableUnionTypes(): void
+    {
+        $con = new Container();
+        $inv = new DefaultInvoker($con);
+        $config = $con->get(Config::class);
+
+        // Test null with a nullable union type
+        $config->set('nullable.union.key', null);
+        $result = $inv->execute(function (
+            #[ParameterConfigValue('nullable.union.key')]
+            null|int|string $param
+        ) {
+            return $param;
+        });
+        $this->assertNull($result);
+
+        // Test int with a nullable union type
+        $config->set('nullable.union.key', 42);
+        $result = $inv->execute(function (
+            #[ParameterConfigValue('nullable.union.key')]
+            null|int|string $param
+        ) {
+            return $param;
+        });
+        $this->assertEquals(42, $result);
+    }
+
+
 }
 
 function testFunction(): string

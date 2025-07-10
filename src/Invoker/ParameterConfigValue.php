@@ -2,10 +2,13 @@
 
 namespace Joby\ContextInjection\Invoker;
 
-readonly class ResolvedParameter
+use Attribute;
+
+#[Attribute]
+readonly class ParameterConfigValue
 {
     public function __construct(
-        public mixed $value
+        public string $key,
     )
     {
     }

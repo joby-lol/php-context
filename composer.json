@@ -3,6 +3,9 @@
     "description": "A global static dependency injection container, because sometimes the old way is the good way ... if you mix it with the new way.",
     "type": "library",
     "license": "MIT",
+    "require": {
+        "php": "~8.2"
+    },
     "autoload": {
         "psr-4": {
             "Joby\\ContextInjection\\": "src/"

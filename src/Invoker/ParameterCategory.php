@@ -9,7 +9,7 @@ use Attribute;
  * needs to be from a category other than "default"
  */
 #[Attribute(Attribute::TARGET_PARAMETER)]
-class ParameterCategory
+readonly class ParameterCategory
 {
     /**
      * The category to pull the parameter from.
@@ -17,7 +17,7 @@ class ParameterCategory
      * @param string $category The category name.
      */
     public function __construct(
-        public readonly string $category,
+        public string $category,
     )
     {
     }

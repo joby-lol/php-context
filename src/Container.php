@@ -2,6 +2,8 @@
 
 namespace Joby\ContextInjection;
 
+use Joby\ContextInjection\Config\Config;
+use Joby\ContextInjection\Config\DefaultConfig;
 use Joby\ContextInjection\Invoker\DefaultInvoker;
 use Joby\ContextInjection\Invoker\Invoker;
 use RuntimeException;
@@ -36,20 +38,10 @@ class Container
      */
     protected array $instantiating = [];
 
-    public function __construct(bool $register_defaults = true)
+    public function __construct(Config|null $config = null, Invoker|null $invoker = null)
     {
-        if ($register_defaults) $this->registerDefaults();
-    }
-
-    /**
-     * Register default built-in classes needed for the Context to function.
-     * These may be overridden by user-defined classes, but running this method
-     * will make all the necessary basic dependencies available for use, and
-     * get the context ready for use.
-     */
-    public function registerDefaults(): void
-    {
-        $this->register(DefaultInvoker::class);
+        $this->register($config ?? new DefaultConfig());
+        $this->register($invoker ?? DefaultInvoker::class);
     }
 
     /**

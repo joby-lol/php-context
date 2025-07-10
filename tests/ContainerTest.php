@@ -27,9 +27,6 @@ class ContainerTest extends TestCase
             DefaultInvoker::class,
             $con->get(Invoker::class)
         );
-        $this->expectException(RuntimeException::class);
-        $con = new Container(register_defaults: false);
-        $con->get(Invoker::class);
     }
 
     /**
