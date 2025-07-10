@@ -5,6 +5,7 @@ namespace Joby\ContextInjection\Invoker;
 use Closure;
 use InvalidArgumentException;
 use Joby\ContextInjection\Config\Config;
+use Joby\ContextInjection\Config\ConfigTypeException;
 use Joby\ContextInjection\Container;
 use ReflectionException;
 use ReflectionFunction;
@@ -155,7 +156,7 @@ class DefaultInvoker implements Invoker
         sort($typeString);
         $typeString = implode('|', $typeString);
         if ($type->allowsNull()) $typeString .= '|null';
-        throw new RuntimeException(sprintf(
+        throw new ConfigTypeException(sprintf(
             'Config value for parameter "%s" (%s) must be of type %s, got %s',
             $param->getName(),
             $key,
