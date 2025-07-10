@@ -141,7 +141,7 @@ class DefaultInvokerTest extends TestCase
         );
         $this->assertEquals(
             $con->get(TestClassA::class, 'secondary'),
-            $inv->execute(function (#[ParameterCategory('secondary')] TestClassA $a) {
+            $inv->execute(function (#[CategoryName('secondary')] TestClassA $a) {
                 return $a;
             })
         );
@@ -156,7 +156,7 @@ class DefaultInvokerTest extends TestCase
         $this->assertEquals(
             'test_value',
             $inv->execute(function (
-                #[ParameterConfigValue('test_key')] string $value
+                #[ConfigValue('test_key')] string $value
             ) {
                 return $value;
             })
@@ -168,8 +168,8 @@ class DefaultInvokerTest extends TestCase
         $this->assertEquals(
             'test_value',
             $inv->execute(function (
-                #[ParameterCategory('test_category')]
-                #[ParameterConfigValue('test_key')]
+                #[CategoryName('test_category')]
+                #[ConfigValue('test_key')]
                 string $value
             ) {
                 return $value;
@@ -184,7 +184,7 @@ class DefaultInvokerTest extends TestCase
 
         // Test with default value when config key doesn't exist
         $result = $inv->execute(function (
-            #[ParameterConfigValue('missing.key')]
+            #[ConfigValue('missing.key')]
             string $param = 'default value'
         ) {
             return $param;
@@ -197,7 +197,7 @@ class DefaultInvokerTest extends TestCase
         $config->set('existing.key', 'config value');
 
         $result = $inv->execute(function (
-            #[ParameterConfigValue('existing.key')]
+            #[ConfigValue('existing.key')]
             string $param = 'default value'
         ) {
             return $param;
@@ -220,19 +220,19 @@ class DefaultInvokerTest extends TestCase
 
         // Test correct types pass validation
         $this->assertEquals('string value', $inv->execute(
-            fn(#[ParameterConfigValue('string.key')] string $param) => $param
+            fn(#[ConfigValue('string.key')] string $param) => $param
         ));
 
         $this->assertEquals(42, $inv->execute(
-            fn(#[ParameterConfigValue('int.key')] int $param) => $param
+            fn(#[ConfigValue('int.key')] int $param) => $param
         ));
 
         $this->assertTrue($inv->execute(
-            fn(#[ParameterConfigValue('bool.key')] bool $param) => $param
+            fn(#[ConfigValue('bool.key')] bool $param) => $param
         ));
 
         $this->assertEquals(['test'], $inv->execute(
-            fn(#[ParameterConfigValue('array.key')] array $param) => $param
+            fn(#[ConfigValue('array.key')] array $param) => $param
         ));
     }
 
@@ -246,10 +246,10 @@ class DefaultInvokerTest extends TestCase
         $config->set('wrong.type', 'not an integer');
 
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Config value for parameter "param" (wrong.type) must be of type int, got string');
+        $this->expectExceptionMessage('Config value from "wrong.type" for parameter "param" must be of type int, got string');
 
         $inv->execute(function (
-            #[ParameterConfigValue('wrong.type')]
+            #[ConfigValue('wrong.type')]
             int $param
         ) {
         });
@@ -265,7 +265,7 @@ class DefaultInvokerTest extends TestCase
         $config->set('nullable.key', null);
 
         $result = $inv->execute(function (
-            #[ParameterConfigValue('nullable.key')]
+            #[ConfigValue('nullable.key')]
             ?string $param
         ) {
             return $param;
@@ -283,7 +283,7 @@ class DefaultInvokerTest extends TestCase
         $this->expectExceptionMessage('Error building argument for parameter "param": Config key "missing.key" does not exist.');
 
         $inv->execute(function (
-            #[ParameterConfigValue('missing.key')]
+            #[ConfigValue('missing.key')]
             string $param
         ) {
         });
@@ -298,7 +298,7 @@ class DefaultInvokerTest extends TestCase
         // Test int|string union type with int value
         $config->set('union.key', 42);
         $result = $inv->execute(function (
-            #[ParameterConfigValue('union.key')]
+            #[ConfigValue('union.key')]
             int|string $param
         ) {
             return $param;
@@ -308,7 +308,7 @@ class DefaultInvokerTest extends TestCase
         // Test int|string union type with string value
         $config->set('union.key', 'test');
         $result = $inv->execute(function (
-            #[ParameterConfigValue('union.key')]
+            #[ConfigValue('union.key')]
             int|string $param
         ) {
             return $param;
@@ -318,9 +318,9 @@ class DefaultInvokerTest extends TestCase
         // Test int|string union type with an invalid value
         $config->set('union.key', true);
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Config value for parameter "param" (union.key) must be of type int|string, got bool');
+        $this->expectExceptionMessage('Config value from "union.key" for parameter "param" must be of type int|string, got bool');
         $inv->execute(function (
-            #[ParameterConfigValue('union.key')]
+            #[ConfigValue('union.key')]
             int|string $param
         ) {
         });
@@ -335,7 +335,7 @@ class DefaultInvokerTest extends TestCase
         // Test null with a nullable union type
         $config->set('nullable.union.key', null);
         $result = $inv->execute(function (
-            #[ParameterConfigValue('nullable.union.key')]
+            #[ConfigValue('nullable.union.key')]
             null|int|string $param
         ) {
             return $param;
@@ -345,7 +345,7 @@ class DefaultInvokerTest extends TestCase
         // Test int with a nullable union type
         $config->set('nullable.union.key', 42);
         $result = $inv->execute(function (
-            #[ParameterConfigValue('nullable.union.key')]
+            #[ConfigValue('nullable.union.key')]
             null|int|string $param
         ) {
             return $param;

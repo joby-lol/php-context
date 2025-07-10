@@ -5,7 +5,7 @@ namespace Joby\ContextInjection\Invoker;
 use Attribute;
 
 #[Attribute]
-readonly class ParameterConfigValue
+readonly class ConfigValue
 {
     public function __construct(
         public string $key,

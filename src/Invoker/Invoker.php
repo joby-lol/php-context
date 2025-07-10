@@ -41,4 +41,15 @@ interface Invoker
      * @return T
      */
     public function execute(callable $fn): mixed;
+
+    /**
+     * Include a given file, parsing for an opening docblock and resolving var tags as if they
+     * were dependencies to be loaded from the container.
+     *
+     * Because docblock tags don't support Attributes, their equivalents are just parsed as strings.
+     * Core attributes are available by inserting strings that look like them on lines preceding a var tag. The
+     * actual Attribute classes need not be included, because this system just looks for strings that
+     * look like `#[CategoryName("category_name")]` or `[ConfigValue("config_key")]`.
+     */
+    public function include(string $file): mixed;
 }

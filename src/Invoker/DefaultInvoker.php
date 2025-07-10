@@ -43,6 +43,102 @@ class DefaultInvoker implements Invoker
     }
 
     /**
+     * Include a given file, parsing for an opening docblock and resolving var tags as if they
+     * were dependencies to be loaded from the container.
+     *
+     * Because docblock tags don't support Attributes, their equivalents are just parsed as strings.
+     * Core attributes are available by inserting strings that look like them on lines preceding a var tag. The
+     * actual Attribute classes need not be included, because this system just looks for strings that
+     * look like `#[CategoryName("category_name")]` or `[ConfigValue("config_key")]`.
+     */
+    public function include(string $file): mixed
+    {
+        $content = file_get_contents($file);
+        if ($content === false) throw new RuntimeException("Could not read file $file.");
+        $vars = [];
+        // parse the first docblock at the start of the file
+        if (preg_match('/^\s*(?:<\?php\s+)?\/\*\*(.*?)\*\//s', $content, $matches)) {
+            // parse the docblock itself
+            $docblock = $matches[1];
+            $lines = preg_split('/\r?\n/', $docblock);
+            $lines = array_map(function ($line) {
+                return trim(preg_replace('/^\s*\*\s*/', '', $line));
+            }, $lines);
+            $currentCategory = null;
+            $currentConfigKey = null;
+            foreach ($lines as $line) {
+                if (!$line) continue;
+                // check for category attribute with double quotes
+                if (preg_match('/#\[CategoryName\("([^"]+)"\)]/', $line, $matches)) {
+                    $currentCategory = $matches[1];
+                    continue;
+                }
+                // check for category attribute with single quotes
+                if (preg_match('/#\[CategoryName\(\'([^\']+)\'\)]/', $line, $matches)) {
+                    $currentCategory = $matches[1];
+                    continue;
+                }
+                // check for config value attribute with double quotes
+                if (preg_match('/#\[ConfigValue\("([^"]+)"\)]/', $line, $matches)) {
+                    $currentConfigKey = $matches[1];
+                    continue;
+                }
+                // check for config value attribute with single quotes
+                if (preg_match('/#\[ConfigValue\(\'([^\']+)\'\)]/', $line, $matches)) {
+                    $currentConfigKey = $matches[1];
+                    continue;
+                }
+                // parse @var declarations
+                if (preg_match('/@var\s+([^\s]+)\s+\$([^\s]+)/', $line, $matches)) {
+                    $allowNull = false;
+                    $type = $matches[1];
+                    if (str_starts_with($type, '?')) {
+                        $allowNull = true;
+                        $type = substr($type, 1);
+                    } elseif (str_starts_with($type, 'null|')) {
+                        $allowNull = true;
+                        $type = substr($type, 5);
+                    } elseif (str_ends_with($type, '|null')) {
+                        $allowNull = true;
+                        $type = substr($type, 0, -5);
+                    }
+                    // check if objects are a fully qualified class name
+                    if (!in_array($type, ['int', 'string', 'float', 'bool', 'array', 'false'])) {
+                        // this is a non-scalar type
+                        $type = ltrim($type, '\\');
+                        if (!class_exists($type)) {
+                            // search the whole file for a use statement ending with this class name
+                            $pattern1 = '/use\s+([^;]+\\\\' . preg_quote($type) . ')\s*;/m';
+                            $pattern2 = '/use\s+([^\s]+)\s+as\s+' . preg_quote($type) . '\s*;/m';
+                            if (preg_match($pattern1, $content, $m)) {
+                                $type = $m[1];
+                            } elseif (preg_match($pattern2, $content, $m)) {
+                                $type = $m[1];
+                            } else {
+                                throw new RuntimeException("Could not find use statement for class $type.");
+                            }
+                        }
+                    }
+                    // build value
+                    $varName = $matches[2];
+                    if ($currentConfigKey) {
+                        // find config value
+                        $config = $this->container->get(Config::class, $currentCategory ?? 'default');
+                        $value = $config->get($currentConfigKey);
+                        $this->validateConfigValueType($value, $currentConfigKey, $varName, [$type], $allowNull);
+                        $vars[$varName] = $value;
+                    } else {
+                        // try to get object
+                        $vars[$varName] = $this->container->get($type, $currentCategory ?? 'default');
+                    }
+                }
+            }
+        }
+        // extract variables into scope, include the file and return its output
+        return include_isolated($file, $vars);
+    }
+
+    /**
      * @param callable|array{class-string|object,string} $fn
      * @return array
      * @throws ReflectionException
@@ -73,15 +169,15 @@ class DefaultInvoker implements Invoker
             }
             // if there is no ParameterValue attribute, we need to get the value
             // first look for a ParameterCategory attribute so we can determine the category
-            $attr = $param->getAttributes(ParameterCategory::class);
+            $attr = $param->getAttributes(CategoryName::class);
             if (count($attr) > 0) {
                 // if there is a ParameterCategory attribute, use its category
                 $category = $attr[0]->newInstance()->category;
             } else {
                 $category = 'default';
             }
-            // look for a ParameterConfigValue attribute and use it to get a value from Config if it exists
-            $attr = $param->getAttributes(ParameterConfigValue::class);
+            // look for a ConfigValue attribute and use it to get a value from Config if it exists
+            $attr = $param->getAttributes(ConfigValue::class);
             if (count($attr) > 0) {
                 $config = $this->container->get(Config::class);
                 $key = $attr[0]->newInstance()->key;
@@ -97,7 +193,11 @@ class DefaultInvoker implements Invoker
                     ));
                 }
                 $value = $config->get($key);
-                $this->validateConfigValueType($value, $key, $param);
+                $types = $param->getType() instanceof ReflectionUnionType
+                    ? $param->getType()->getTypes()
+                    : [$param->getType()];
+                $types = array_map(fn($type) => (string)$type, $types);
+                $this->validateConfigValueType($value, $key, $param->getName(), $types, $param->allowsNull());
                 $args[] = $value;
                 continue;
             }
@@ -128,38 +228,28 @@ class DefaultInvoker implements Invoker
      * Validate that a config value is of the type expected by the parameter and throw an exception
      * if it is an invalid/unexpected type.
      */
-    protected function validateConfigValueType(mixed $value, string $key, ReflectionParameter $param): void
+    protected function validateConfigValueType(mixed $value, string $key, string $param_name, array $types, bool $allowNull): void
     {
-        $type = $param->getType();
-        if (is_null($value) && $type->allowsNull()) return;
-        if ($type instanceof ReflectionUnionType) {
-            $types = $type->getTypes();
-        } else {
-            $types = [$type];
-        }
-        foreach ($types as $t) {
-            $typeName = $t->getName();
-            $valid = match ($typeName) {
+        if (is_null($value) && $allowNull) return;
+        foreach ($types as $type) {
+            $valid = match ($type) {
                 'int' => is_int($value),
                 'string' => is_string($value),
                 'float' => is_float($value),
                 'bool' => is_bool($value),
                 'array' => is_array($value),
                 'false' => $value === false,
-                default => $value instanceof $typeName
+                default => $value instanceof $type
             };
-            if ($valid) {
-                return;
-            }
-        }
-        $typeString = array_map(fn($t) => $t->getName(), $types);
-        sort($typeString);
-        $typeString = implode('|', $typeString);
-        if ($type->allowsNull()) $typeString .= '|null';
+            if ($valid) return;
+        };
+        sort($types);
+        $typeString = implode('|', $types);
+        if ($allowNull) $typeString .= '|null';
         throw new ConfigTypeException(sprintf(
-            'Config value for parameter "%s" (%s) must be of type %s, got %s',
-            $param->getName(),
+            'Config value from "%s" for parameter "%s" must be of type %s, got %s',
             $key,
+            $param_name,
             $typeString,
             get_debug_type($value)
         ));
@@ -180,4 +270,17 @@ class DefaultInvoker implements Invoker
         // @phpstan-ignore-next-line this will always return the return type of the passed callable
         return $reflection->invokeArgs($this->buildFunctionArguments($fn));
     }
+}
+
+/**
+ * Includes a PHP file in an isolated scope with extracted variables.
+ *
+ * @param string $path The path to the PHP file to be included.
+ * @param array<string,mixed> $vars An associative array of variables to extract and make available in the included file's scope.
+ * @return mixed Returns the result of the included file. Typically, this is the return value of the script if specified, or 1 if the script has no return value.
+ */
+function include_isolated(string $path, array $vars): mixed
+{
+    extract($vars);
+    return include $path;
 }

@@ -9,7 +9,7 @@ use Attribute;
  * needs to be from a category other than "default"
  */
 #[Attribute(Attribute::TARGET_PARAMETER)]
-readonly class ParameterCategory
+readonly class CategoryName
 {
     /**
      * The category to pull the parameter from.
