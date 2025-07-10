@@ -1,0 +1,120 @@
+<?php
+
+namespace Joby\ContextInjection;
+
+use Joby\ContextInjection\Invoker\DefaultInvoker;
+use Joby\ContextInjection\Invoker\Invoker;
+use Joby\ContextInjection\TestClasses\CircularClassA;
+use Joby\ContextInjection\TestClasses\CircularClassB;
+use Joby\ContextInjection\TestClasses\TestClass_requires_A_and_B;
+use Joby\ContextInjection\TestClasses\TestClassA;
+use Joby\ContextInjection\TestClasses\TestClassA1;
+use Joby\ContextInjection\TestClasses\TestClassB;
+use PHPUnit\Framework\TestCase;
+use RuntimeException;
+
+class ContainerTest extends TestCase
+{
+    /**
+     * Verify that the default bare Context returns a DefaultInvoker as its invoker. This
+     * may be extended at some point to include other default built-in things ... if they
+     * ever come to exist.
+     */
+    public function testDefaults(): void
+    {
+        $con = new Container();
+        $this->assertInstanceOf(
+            DefaultInvoker::class,
+            $con->get(Invoker::class)
+        );
+        $this->expectException(RuntimeException::class);
+        $con = new Container(register_defaults: false);
+        $con->get(Invoker::class);
+    }
+
+    /**
+     * Test to verify that basic registration and instantiation/retrieval works, including
+     * classes that require dependency injection. Also verifies that the same objects are
+     * being returned.
+     */
+    public function testBasicRegistrationAndRetrieval(): void
+    {
+        $con = new Container();
+        // basic classes
+        $this->assertFalse($con->isRegistered(TestClassA::class));
+        $con->register(TestClassA::class);
+        $this->assertTrue($con->isRegistered(TestClassA::class));
+        $this->assertInstanceOf(
+            TestClassA::class,
+            $a = $con->get(TestClassA::class)
+        );
+        $con->register(TestClassB::class);
+        $this->assertInstanceOf(
+            TestClassB::class,
+            $b = $con->get(TestClassB::class)
+        );
+        // class that depends on A and B
+        $con->register(TestClass_requires_A_and_B::class);
+        $this->assertInstanceOf(
+            TestClass_requires_A_and_B::class,
+            $c = $con->get(TestClass_requires_A_and_B::class)
+        );
+        // check that the dependencies were injected correctly
+        $this->assertEquals(
+            $a,
+            $c->a
+        );
+        $this->assertEquals(
+            $b,
+            $c->b
+        );
+    }
+
+    /**
+     * Test to verify that if you register a class with Context, it can also be retrieved
+     * by getting any of its parent classes.
+     */
+    public function testRegisteringChildClasses(): void
+    {
+        $con = new Container();
+        $con->register(TestClassA1::class);
+        $this->assertInstanceOf(
+            TestClassA1::class,
+            $a1 = $con->get(TestClassA1::class)
+        );
+        $this->assertInstanceOf(
+            TestClassA1::class,
+            $a = $con->get(TestClassA::class)
+        );
+        $this->assertEquals(
+            $a1,
+            $a
+        );
+    }
+
+    /**
+     * Test to verify that circular dependencies are detected and an exception is thrown.
+     */
+    public function testCircularDependencyDetection(): void
+    {
+        $con = new Container();
+        // Register both classes that form a circular dependency
+        $con->register(CircularClassA::class);
+        $con->register(CircularClassB::class);
+
+        try {
+            // Try to get one of the classes, which should trigger the circular dependency detection
+            $con->get(CircularClassA::class);
+            $this->fail('Expected RuntimeException was not thrown');
+        } catch (RuntimeException $e) {
+            // Verify the exception message contains the expected text
+            $this->assertStringContainsString('Circular dependency detected', $e->getMessage());
+
+            // Verify the dependency chain is included in the message
+            $this->assertStringContainsString(CircularClassA::class, $e->getMessage());
+
+            // The message should contain the dependency key format
+            $this->assertStringContainsString('|', $e->getMessage());
+        }
+    }
+}
