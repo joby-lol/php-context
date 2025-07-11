@@ -8,9 +8,10 @@ use Joby\ContextInjection\Config\Config;
 use Joby\ContextInjection\Config\DefaultConfig;
 use Joby\ContextInjection\Invoker\DefaultInvoker;
 use Joby\ContextInjection\Invoker\Invoker;
+use Psr\Container\ContainerInterface;
 use RuntimeException;
 
-class Container
+class Container implements ContainerInterface
 {
     public readonly Cache $cache;
     public readonly Config $config;
@@ -46,6 +47,24 @@ class Container
         $this->cache = $cache ?? new DefaultCache();
         $this->config = $config ?? new DefaultConfig();
         $this->invoker = $invoker_class ? new $invoker_class($this) : new DefaultInvoker($this);
+    }
+
+    public function __clone()
+    {
+        $this->config = clone $this->config;
+        $unique_objects = [];
+        foreach ($this->built as $category => $built) {
+            foreach ($built as $class => $object) {
+                if (!array_key_exists(spl_object_id($object), $unique_objects)) $unique_objects[spl_object_id($object)] = [clone $object, []];
+                $unique_objects[spl_object_id($object)][1][] = $category;
+            }
+        }
+        $this->built = [];
+        foreach ($unique_objects as $obj) {
+            foreach ($obj[1] as $category) {
+                $this->register($obj[0], $category);
+            }
+        }
     }
 
     /**
@@ -101,9 +120,11 @@ class Container
     public function get(string $class, string $category = 'default'): object
     {
         // short-circuit on built-in classes
-        if ($class === Invoker::class) return $this->invoker;
-        if ($class === Cache::class) return $this->cache;
-        if ($class === Config::class) return $this->config;
+        if ($category === 'default') {
+            if ($class === Invoker::class) return $this->invoker;
+            if ($class === Cache::class) return $this->cache;
+            if ($class === Config::class) return $this->config;
+        }
         // normal get/instantiate
         $output = $this->getBuilt($class, $category)
             ?? $this->instantiate($class, $category);
@@ -119,7 +140,7 @@ class Container
      *
      * @param class-string $class
      */
-    public function isRegistered(
+    public function has(
         string $class,
         string $category = 'default',
     ): bool
@@ -168,7 +189,7 @@ class Container
     protected function getBuilt(string $class, string $category): object|null
     {
         // if the class is not registered, return null
-        if (!$this->isRegistered($class, $category)) {
+        if (!$this->has($class, $category)) {
             return null;
         }
         // return null if the built object does not exist

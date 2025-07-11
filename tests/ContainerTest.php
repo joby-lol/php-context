@@ -42,6 +42,39 @@ class ContainerTest extends TestCase
     }
 
     /**
+     * Verify that when a Container is cloned all of its instantiated objects are also cloned, and also that if two
+     * objects in different categories are the same object they continue to be the same clone in the cloned Container.
+     */
+    public function testCloning(): void
+    {
+        $con = new Container();
+        $con->register(new TestClassA());
+        $con->register(new TestClassB());
+        // secondary TestClassA is the same object as default TestClassA
+        $con->register($con->get(TestClassA::class), 'secondary');
+        // secondary TestClassB will be a different object than default TestClassB
+        $con->register(new TestClassB(), 'secondary');
+        // verify (not) sameness of A and B test classes
+        $this->assertSame($con->get(TestClassA::class), $con->get(TestClassA::class, 'secondary'));
+        $this->assertNotSame($con->get(TestClassB::class), $con->get(TestClassB::class, 'secondary'));
+        // clone container
+        $con2 = clone $con;
+        $this->assertNotSame($con, $con2);
+        // verify that config is cloned but other core tools are not
+        $this->assertNotSame($con->config, $con2->config);
+        $this->assertSame($con->cache, $con2->cache);
+        $this->assertSame($con->invoker, $con2->invoker);
+        // verify that all objects in $con2 are not the same as in $con
+        $this->assertNotSame($con->get(TestClassA::class), $con2->get(TestClassA::class));
+        $this->assertNotSame($con->get(TestClassB::class), $con2->get(TestClassB::class));
+        $this->assertNotSame($con->get(TestClassA::class, 'secondary'), $con2->get(TestClassA::class, 'secondary'));
+        $this->assertNotSame($con->get(TestClassB::class, 'secondary'), $con2->get(TestClassB::class, 'secondary'));
+        // verify matching (not) sameness of A and B test classes
+        $this->assertSame($con2->get(TestClassA::class), $con2->get(TestClassA::class, 'secondary'));
+        $this->assertNotSame($con2->get(TestClassB::class), $con2->get(TestClassB::class, 'secondary'));
+    }
+
+    /**
      * Test to verify that basic registration and instantiation/retrieval works, including
      * classes that require dependency injection. Also verifies that the same objects are
      * being returned.
@@ -50,9 +83,9 @@ class ContainerTest extends TestCase
     {
         $con = new Container();
         // basic classes
-        $this->assertFalse($con->isRegistered(TestClassA::class));
+        $this->assertFalse($con->has(TestClassA::class));
         $con->register(TestClassA::class);
-        $this->assertTrue($con->isRegistered(TestClassA::class));
+        $this->assertTrue($con->has(TestClassA::class));
         $this->assertInstanceOf(
             TestClassA::class,
             $a = $con->get(TestClassA::class)

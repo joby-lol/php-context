@@ -3,24 +3,21 @@
 namespace Joby\ContextInjection;
 
 /**
- * The main static context injector. This works similarly to a normal dependency
- * injection container, but it is static and does not require any instantiation
- * or configuration. It is designed to be used in a static context, so that it
+ * The main static context injector. This works similarly to a normal dependency injection container, but it is static
+ * and does not require any instantiation or configuration. It is designed to be used in a static context so that it
  * can be used anywhere in the codebase without needing to pass it around.
  *
- * Note that this class is *not* final, so you can extend it to create your own
- * context injector and add features that are useful for your application.
- * By default child classes will share their container with this one, but that
- * can be overridden by changing their CONTEXT_CLASS constant.
+ * It is also designed to gracefully allow stepping into and out of additional contexts, which are kept on a stack so
+ * that when you end a context, you revert to the prior one. This is useful for things like atomic rollbacks, building
+ * additional requests without impacting the main one, etc.
  */
 class Context
 {
-    const CONTEXT_CLASS = Context::class;
-
     /**
-     * @var array<string,Container>
+     * @var array<Container>
      */
-    protected static array $containers = [];
+    protected static array $stack = [];
+    protected static Container|null $current;
 
     /**
      * Get an object of the given class, either by retrieving a built copy of it
@@ -38,9 +35,62 @@ class Context
         return static::container()->get($class, $category);
     }
 
-    public static function container(Container|null $container = null): Container
+    /**
+     * Create a new empty Container. This is in its own method so that it can be overridden by child classes if you want
+     * to create your own domain-specific Context class based on this one.
+     */
+    protected static function createContainer(): Container
     {
-        return static::$containers[static::CONTEXT_CLASS] ??= ($container ?? new Container());
+        return new Container();
+    }
+
+    /**
+     * Entirely reset the context, clearing the current Container as well as the stack.
+     */
+    public static function reset(): void
+    {
+        static::$stack = [];
+        static::$current = null;
+    }
+
+    /**
+     * Get the current container, creating a new one if there is not one.
+     */
+    public static function container(): Container
+    {
+        return static::$current ??= static::createContainer();
+    }
+
+    /**
+     * Open a new context from an arbitrary Container.
+     */
+    public static function openFromContainer(Container $container): void
+    {
+        static::$stack[] = static::container();
+        static::$current = $container;
+    }
+
+    /**
+     * Begin a new context from a clone of the current Container.
+     */
+    public static function openFromClone(): void
+    {
+        static::$stack[] = static::container();
+        static::$current = clone static::container();
+    }
+
+    /**
+     * Begin a new context from a brand new empty Container.
+     */
+    public static function openEmpty(): void
+    {
+        static::$stack[] = static::container();
+        static::$current = static::createContainer();
+    }
+
+    public static function close(): void
+    {
+        static::$current = array_pop(static::$stack);
     }
 
     /**
@@ -57,7 +107,7 @@ class Context
      * @param string              $category the category of the class, if applicable (i.e. "current" to get the current
      *                                      page for a request, etc.)
      */
-    public static function register(string $class, string $category = "default"): void
+    public static function register(string|object $class, string $category = "default"): void
     {
         static::container()->register($class, $category);
     }
@@ -69,8 +119,8 @@ class Context
      *
      * @param class-string $class
      */
-    public static function isRegistered(string $class): bool
+    public static function has(string $class): bool
     {
-        return static::container()->isRegistered($class);
+        return static::container()->has($class);
     }
 }
