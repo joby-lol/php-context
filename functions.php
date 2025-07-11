@@ -23,6 +23,24 @@ function ctx(string $class, string $category = 'default'): mixed
 }
 
 /**
+ * Register a class or object to the context so that it can be retrieved
+ * later using the get() method. This will also register all parent
+ * classes and interfaces of the given class so that it can be retrieved
+ * using any of them.
+ *
+ * If a class is given, it will be instantiated the first time it is
+ * requested. If an object is given, it will be saved as a built object
+ * and can be retrieved directly without instantiation.
+ *
+ * @param class-string|object $class the class name or object to register
+ * @param string $category the category of the class, if applicable (i.e. "current" to get the current page for a request, etc.)
+ */
+function ctx_register(string|object $class, string $category = "default"): void
+{
+    Context::register($class, $category);
+}
+
+/**
  * Execute a callable, automatically instantiating any arguments it requires
  * from the context injection system. This allows for easy execution
  * of functions and methods with dependencies, without needing to manually

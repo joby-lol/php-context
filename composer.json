@@ -1,6 +1,6 @@
 {
     "name": "joby/context",
-    "description": "A global static dependency injection container, because sometimes the old way is the good way ... if you mix it with the new way.",
+    "description": "A lightweight, static dependency injection container for PHP that combines simplicity with powerful features like automatic dependency resolution, callable execution with injected dependencies, and file inclusion with docblock-based dependency injection.",
     "type": "library",
     "license": "MIT",
     "require": {

@@ -9,14 +9,14 @@ namespace Joby\ContextInjection;
  * can be used anywhere in the codebase without needing to pass it around.
  *
  * Note that this class is *not* final, so you can extend it to create your own
- * context injector and add features that are useful for your application. It is
- * also noteworthy that child classes will have their own lists of registered
- * classes and built objects, so they will not interfere with each other or the
- * base class.
+ * context injector and add features that are useful for your application.
+ * By default child classes will share their container with this one, but that
+ * can be overridden by changing their CONTEXT_CLASS constant.
  */
 class Context
 {
     const CONTEXT_CLASS = Context::class;
+
     /**
      * @var array<string,Container>
      */
