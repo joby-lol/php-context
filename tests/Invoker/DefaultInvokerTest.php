@@ -245,7 +245,7 @@ class DefaultInvokerTest extends TestCase
         $config->set('wrong.type', 'not an integer');
 
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Config value from "wrong.type" for parameter "param" must be of type int, got string');
+        $this->expectExceptionMessage('Config value from "wrong.type" expected to be of type int, got string');
 
         $inv->execute(function (
             #[ConfigValue('wrong.type')]
@@ -279,7 +279,7 @@ class DefaultInvokerTest extends TestCase
         $inv = new DefaultInvoker($con);
 
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Error building argument for parameter "param": Config key "missing.key" does not exist.');
+        $this->expectExceptionMessage('Config value for key missing.key does not exist.');
 
         $inv->execute(function (
             #[ConfigValue('missing.key')]
@@ -317,7 +317,7 @@ class DefaultInvokerTest extends TestCase
         // Test int|string union type with an invalid value
         $config->set('union.key', true);
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Config value from "union.key" for parameter "param" must be of type int|string, got bool');
+        $this->expectExceptionMessage('Config value from "union.key" expected to be of type int|string, got bool');
         $inv->execute(function (
             #[ConfigValue('union.key')]
             int|string $param

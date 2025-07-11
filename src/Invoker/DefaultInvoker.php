@@ -4,13 +4,11 @@ namespace Joby\ContextInjection\Invoker;
 
 use Closure;
 use InvalidArgumentException;
-use Joby\ContextInjection\Config\Config;
 use Joby\ContextInjection\Config\ConfigTypeException;
 use Joby\ContextInjection\Container;
 use ReflectionException;
 use ReflectionFunction;
 use ReflectionMethod;
-use ReflectionParameter;
 use ReflectionUnionType;
 use RuntimeException;
 
@@ -54,89 +52,100 @@ class DefaultInvoker implements Invoker
      */
     public function include(string $file): mixed
     {
-        $content = file_get_contents($file);
-        if ($content === false) throw new RuntimeException("Could not read file $file.");
-        $vars = [];
-        // parse the first docblock at the start of the file
-        if (preg_match('/^\s*(?:<\?php\s+)?\/\*\*(.*?)\*\//s', $content, $matches)) {
-            // parse the docblock itself
-            $docblock = $matches[1];
-            $lines = preg_split('/\r?\n/', $docblock);
-            $lines = array_map(function ($line) {
-                return trim(preg_replace('/^\s*\*\s*/', '', $line));
-            }, $lines);
-            $currentCategory = null;
-            $currentConfigKey = null;
-            foreach ($lines as $line) {
-                if (!$line) continue;
-                // check for category attribute with double quotes
-                if (preg_match('/#\[CategoryName\("([^"]+)"\)]/', $line, $matches)) {
-                    $currentCategory = $matches[1];
-                    continue;
-                }
-                // check for category attribute with single quotes
-                if (preg_match('/#\[CategoryName\(\'([^\']+)\'\)]/', $line, $matches)) {
-                    $currentCategory = $matches[1];
-                    continue;
-                }
-                // check for config value attribute with double quotes
-                if (preg_match('/#\[ConfigValue\("([^"]+)"\)]/', $line, $matches)) {
-                    $currentConfigKey = $matches[1];
-                    continue;
-                }
-                // check for config value attribute with single quotes
-                if (preg_match('/#\[ConfigValue\(\'([^\']+)\'\)]/', $line, $matches)) {
-                    $currentConfigKey = $matches[1];
-                    continue;
-                }
-                // parse @var declarations
-                if (preg_match('/@var\s+([^\s]+)\s+\$([^\s]+)/', $line, $matches)) {
-                    $allowNull = false;
-                    $type = $matches[1];
-                    if (str_starts_with($type, '?')) {
-                        $allowNull = true;
-                        $type = substr($type, 1);
-                    } elseif (str_starts_with($type, 'null|')) {
-                        $allowNull = true;
-                        $type = substr($type, 5);
-                    } elseif (str_ends_with($type, '|null')) {
-                        $allowNull = true;
-                        $type = substr($type, 0, -5);
-                    }
-                    // check if objects are a fully qualified class name
-                    if (!in_array($type, ['int', 'string', 'float', 'bool', 'array', 'false'])) {
-                        // this is a non-scalar type
-                        $type = ltrim($type, '\\');
-                        if (!class_exists($type)) {
-                            // search the whole file for a use statement ending with this class name
-                            $pattern1 = '/use\s+([^;]+\\\\' . preg_quote($type) . ')\s*;/m';
-                            $pattern2 = '/use\s+([^\s]+)\s+as\s+' . preg_quote($type) . '\s*;/m';
-                            if (preg_match($pattern1, $content, $m)) {
-                                $type = $m[1];
-                            } elseif (preg_match($pattern2, $content, $m)) {
-                                $type = $m[1];
+        $key = md5_file($file);
+        $vars = $this->cache(
+            "include/$key",
+            function () use ($file): mixed {
+                $content = file_get_contents($file);
+                if ($content === false) throw new RuntimeException("Could not read file $file.");
+                $vars = [];
+                // parse the first docblock at the start of the file
+                if (preg_match('/^\s*(?:<\?php\s+)?\/\*\*(.*?)\*\//s', $content, $matches)) {
+                    // parse the docblock itself
+                    $docblock = $matches[1];
+                    $lines = preg_split('/\r?\n/', $docblock);
+                    $lines = array_map(function ($line) {
+                        return trim(preg_replace('/^\s*\*\s*/', '', $line));
+                    }, $lines);
+                    $currentCategory = null;
+                    $currentConfigKey = null;
+                    foreach ($lines as $line) {
+                        if (!$line) continue;
+                        // check for category attribute with double quotes
+                        if (preg_match('/#\[CategoryName\("([^"]+)"\)]/', $line, $matches)) {
+                            $currentCategory = $matches[1];
+                            continue;
+                        }
+                        // check for category attribute with single quotes
+                        if (preg_match('/#\[CategoryName\(\'([^\']+)\'\)]/', $line, $matches)) {
+                            $currentCategory = $matches[1];
+                            continue;
+                        }
+                        // check for config value attribute with double quotes
+                        if (preg_match('/#\[ConfigValue\("([^"]+)"\)]/', $line, $matches)) {
+                            $currentConfigKey = $matches[1];
+                            continue;
+                        }
+                        // check for config value attribute with single quotes
+                        if (preg_match('/#\[ConfigValue\(\'([^\']+)\'\)]/', $line, $matches)) {
+                            $currentConfigKey = $matches[1];
+                            continue;
+                        }
+                        // parse @var declarations
+                        if (preg_match('/@var\s+([^\s]+)\s+\$([^\s]+)/', $line, $matches)) {
+                            $allowNull = false;
+                            $type = $matches[1];
+                            if (str_starts_with($type, '?')) {
+                                $allowNull = true;
+                                $type = substr($type, 1);
+                            } elseif (str_starts_with($type, 'null|')) {
+                                $allowNull = true;
+                                $type = substr($type, 5);
+                            } elseif (str_ends_with($type, '|null')) {
+                                $allowNull = true;
+                                $type = substr($type, 0, -5);
+                            }
+                            // check if objects are a fully qualified class name
+                            if (!in_array($type, ['int', 'string', 'float', 'bool', 'array', 'false'])) {
+                                // this is a non-scalar type
+                                $type = ltrim($type, '\\');
+                                if (!class_exists($type)) {
+                                    // search the whole file for a use statement ending with this class name
+                                    $pattern1 = '/use\s+([^;]+\\\\' . preg_quote($type) . ')\s*;/m';
+                                    $pattern2 = '/use\s+([^\s]+)\s+as\s+' . preg_quote($type) . '\s*;/m';
+                                    if (preg_match($pattern1, $content, $m)) {
+                                        $type = $m[1];
+                                    } elseif (preg_match($pattern2, $content, $m)) {
+                                        $type = $m[1];
+                                    } else {
+                                        throw new RuntimeException("Could not find use statement for class $type.");
+                                    }
+                                }
+                            }
+                            // build value
+                            $varName = $matches[2];
+                            if ($currentConfigKey) {
+                                // this variable is a config value
+                                // TODO: handle union types for config
+                                $vars[$varName] = new ConfigPlaceholder(
+                                    $currentConfigKey,
+                                    [$type],
+                                    false,
+                                    null,
+                                    $allowNull
+                                );
                             } else {
-                                throw new RuntimeException("Could not find use statement for class $type.");
+                                // this variable is an object
+                                $vars[$varName] = new ObjectPlaceholder($type, $currentCategory ?? 'default');
                             }
                         }
                     }
-                    // build value
-                    $varName = $matches[2];
-                    if ($currentConfigKey) {
-                        // find config value
-                        $config = $this->container->get(Config::class, $currentCategory ?? 'default');
-                        $value = $config->get($currentConfigKey);
-                        $this->validateConfigValueType($value, $currentConfigKey, $varName, [$type], $allowNull);
-                        $vars[$varName] = $value;
-                    } else {
-                        // try to get object
-                        $vars[$varName] = $this->container->get($type, $currentCategory ?? 'default');
-                    }
                 }
+                return $vars;
             }
-        }
+        );
         // extract variables into scope, include the file and return its output
-        return include_isolated($file, $vars);
+        return include_isolated($file, $this->resolvePlaceholders($vars));
     }
 
     /**
@@ -157,6 +166,23 @@ class DefaultInvoker implements Invoker
     }
 
     /**
+     * Helper method for caching the results of expensive operations.
+     *
+     * @param string   $key
+     * @param callable $callback
+     *
+     * @return mixed
+     * @throws \Psr\SimpleCache\InvalidArgumentException
+     */
+    protected function cache(string $key, callable $callback): mixed
+    {
+        return $this->container->cache->cache(
+            'DefaultInvoker/' . $key,
+            $callback
+        );
+    }
+
+    /**
      * @param callable|array{class-string|object,string} $fn
      *
      * @return array
@@ -164,28 +190,50 @@ class DefaultInvoker implements Invoker
      */
     protected function buildFunctionArguments(callable|array $fn): array
     {
-        if (is_string($fn) || $fn instanceof Closure) {
+        if (is_string($fn)) {
             $reflection = new ReflectionFunction($fn);
+            $cache_key = md5($fn);
+        } elseif ($fn instanceof Closure) {
+            $reflection = new ReflectionFunction($fn);
+            $cache_key = null;
         } elseif (is_array($fn)) {
             assert(is_string($fn[1]), 'The second element of the array must be a method name.');
             assert(is_object($fn[0]) || (is_string($fn[0]) && class_exists($fn[0])), 'The first element of the array must be a class name or an object.');
             $reflection = new ReflectionMethod($fn[0], $fn[1]);
+            $cache_key = md5(serialize([$fn[0], $fn[1]]));
         } else {
             throw new InvalidArgumentException('The provided callable is not a valid function or method.');
         }
+        if ($cache_key) {
+            $args = $this->cache(
+                "buildFunctionArguments/$cache_key",
+                function () use ($reflection): array {
+                    return $this->doBuildFunctionArguments($reflection);
+                }
+            );
+        } else {
+            $args = $this->doBuildFunctionArguments($reflection);
+        }
+        // return $args
+        return $this->resolvePlaceholders($args);
+    }
+
+    /**
+     * @param ReflectionFunction|ReflectionMethod $reflection
+     *
+     * @return ConfigPlaceholder[]|ObjectPlaceholder[]
+     * @throws ReflectionException
+     */
+    protected function doBuildFunctionArguments(ReflectionFunction|ReflectionMethod $reflection): array
+    {
         $parameters = $reflection->getParameters();
+        /** @var array<ConfigPlaceholder|ObjectPlaceholder> $args */
         $args = [];
         foreach ($parameters as $param) {
             // get the type hint of the parameter
             $type = (string)$param->getType();
             assert(!empty($type), "The parameter {$param->getName()} does not have a type hint.");
             assert(class_exists($type), "The type \"$type\" does not exist.");
-            // hook for extending paramter resolution
-            $hook = $this->resolveParameter($param);
-            if (!is_null($hook)) {
-                $args[] = $hook->value;
-                continue;
-            }
             // if there is no ParameterValue attribute, we need to get the value
             // first look for a ParameterCategory attribute so we can determine the category
             $attr = $param->getAttributes(CategoryName::class);
@@ -198,81 +246,91 @@ class DefaultInvoker implements Invoker
             // look for a ConfigValue attribute and use it to get a value from Config if it exists
             $attr = $param->getAttributes(ConfigValue::class);
             if (count($attr) > 0) {
-                $config = $this->container->get(Config::class);
-                $key = $attr[0]->newInstance()->key;
-                if (!$config->has($key)) {
-                    if ($param->isOptional()) {
-                        $args[] = $param->getDefaultValue();
-                        continue;
-                    }
-                    throw new RuntimeException(sprintf(
-                        'Error building argument for parameter "%s": Config key "%s" does not exist.',
-                        $param->getName(),
-                        $key,
-                    ));
-                }
-                $value = $config->get($key);
+                $attr = $attr[0]->newInstance();
                 $types = $param->getType() instanceof ReflectionUnionType
                     ? $param->getType()->getTypes()
                     : [$param->getType()];
                 $types = array_map(fn($type) => (string)$type, $types);
-                $this->validateConfigValueType($value, $key, $param->getName(), $types, $param->allowsNull());
-                $args[] = $value;
+                $args[] = new ConfigPlaceholder(
+                    $attr->key,
+                    $types,
+                    $param->isOptional(),
+                    $param->isOptional() ? $param->getDefaultValue() : null,
+                    $param->allowsNull(),
+                );
                 continue;
             }
             // get value and add it to the args list
-            $args[] = $this->container->get($type, $category);
+            $args[] = new ObjectPlaceholder(
+                $type,
+                $category
+            );
         }
-        // return $args
         return $args;
     }
 
-    /**
-     * Resolve a parameter in your own way, if you want to easily extend this
-     * class, this method can be overridden to provide custom parameter
-     * resolution if you like. For example, you could add your own custom
-     * attributes, or even invent some whole new way of resolving parameters
-     * while still being able to fall back to the default style.
-     *
-     * If you return a ResolvedParameter, it will be used as the value for the
-     * parameter. If you return null, the default resolution will be used.
-     *
-     * @noinspection PhpUnusedParameterInspection
-     */
-    protected function resolveParameter(ReflectionParameter $param): ResolvedParameter|null
+    protected function resolvePlaceholders(array $args): array
     {
-        return null;
+        return array_map(
+            function (ConfigPlaceholder|ObjectPlaceholder $arg): mixed {
+                if ($arg instanceof ConfigPlaceholder) {
+                    // attempt to get config value
+                    if (!$this->container->config->has($arg->key)) {
+                        if (!$arg->is_optional) throw new RuntimeException("Config value for key {$arg->key} does not exist.");
+                        $value = $arg->default;
+                    } else {
+                        $value = $this->container->config->get($arg->key);
+                    }
+                    // validate type
+                    $this->validateConfigValueType($value, $arg->key, $arg->valid_types, $arg->allows_null);
+                    return $value;
+                } elseif ($arg instanceof ObjectPlaceholder) {
+                    // arg must be an ObjectPlaceholder
+                    return $this->container->get($arg->class, $arg->category);
+                }
+                throw new RuntimeException("Unknown placeholder type.");
+            },
+            $args
+        );
     }
 
     /**
      * Validate that a config value is of the type expected by the parameter and throw an exception
      * if it is an invalid/unexpected type.
      */
-    protected function validateConfigValueType(mixed $value, string $key, string $param_name, array $types, bool $allowNull): void
+    protected function validateConfigValueType(mixed $value, string $key, array $types, bool $allowNull): void
     {
         if (is_null($value) && $allowNull) return;
-        foreach ($types as $type) {
-            $valid = match ($type) {
-                'int' => is_int($value),
-                'string' => is_string($value),
-                'float' => is_float($value),
-                'bool' => is_bool($value),
-                'array' => is_array($value),
-                'false' => $value === false,
-                default => $value instanceof $type
-            };
-            if ($valid) return;
-        }
         sort($types);
-        $typeString = implode('|', $types);
-        if ($allowNull) $typeString .= '|null';
-        throw new ConfigTypeException(sprintf(
-            'Config value from "%s" for parameter "%s" must be of type %s, got %s',
-            $key,
-            $param_name,
-            $typeString,
-            get_debug_type($value)
-        ));
+        $cache_key = md5(serialize([$value, $types]));
+        $valid = $this->cache(
+            "validateConfigValueType/$cache_key",
+            function () use ($types, $value): bool {
+                foreach ($types as $type) {
+                    $valid = match ($type) {
+                        'int' => is_int($value),
+                        'string' => is_string($value),
+                        'float' => is_float($value),
+                        'bool' => is_bool($value),
+                        'array' => is_array($value),
+                        'false' => $value === false,
+                        default => $value instanceof $type
+                    };
+                    if ($valid) return true;
+                }
+                return false;
+            }
+        );
+        if (!$valid) {
+            $typeString = implode('|', $types);
+            if ($allowNull) $typeString .= '|null';
+            throw new ConfigTypeException(sprintf(
+                'Config value from "%s" expected to be of type %s, got %s',
+                $key,
+                $typeString,
+                get_debug_type($value)
+            ));
+        }
     }
 }
 

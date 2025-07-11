@@ -34,6 +34,17 @@ class DefaultInvokerIncludeTest extends TestCase
         );
     }
 
+    public function testNonFullyQualifiedClassNameWithUseAs(): void
+    {
+        $con = new Container();
+        $con->register(TestClassB::class);
+        $b = $con->get(TestClassB::class);
+        $this->assertEquals(
+            $b,
+            $con->get(Invoker::class)->include(__DIR__ . '/include_tests/testNonFullyQualifiedClassNameWithUseAs.php')
+        );
+    }
+
     public function testCategoryName(): void
     {
         $con = new Container();
