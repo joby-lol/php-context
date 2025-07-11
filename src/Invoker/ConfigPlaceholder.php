@@ -18,6 +18,7 @@ readonly class ConfigPlaceholder
         public bool   $is_optional,
         public mixed  $default,
         public bool $allows_null,
+        public string $category = 'default',
     )
     {
     }

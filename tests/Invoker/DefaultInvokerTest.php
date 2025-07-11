@@ -166,7 +166,7 @@ class DefaultInvokerTest extends TestCase
         $config2->set('test_key', 'test_value2');
         $con->register($config2, 'test_category');
         $this->assertEquals(
-            'test_value',
+            'test_value2',
             $inv->execute(function (
                 #[CategoryName('test_category')]
                 #[ConfigValue('test_key')]

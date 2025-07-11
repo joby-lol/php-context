@@ -4,6 +4,7 @@ namespace Joby\ContextInjection\Invoker;
 
 use Closure;
 use InvalidArgumentException;
+use Joby\ContextInjection\Config\Config;
 use Joby\ContextInjection\Config\ConfigTypeException;
 use Joby\ContextInjection\Container;
 use ReflectionException;
@@ -132,7 +133,8 @@ class DefaultInvoker implements Invoker
                                     [$type],
                                     false,
                                     null,
-                                    $allowNull
+                                    $allowNull,
+                                    $currentCategory ?? 'default'
                                 );
                             } else {
                                 // this variable is an object
@@ -257,6 +259,7 @@ class DefaultInvoker implements Invoker
                     $param->isOptional(),
                     $param->isOptional() ? $param->getDefaultValue() : null,
                     $param->allowsNull(),
+                    $category
                 );
                 continue;
             }
@@ -275,11 +278,14 @@ class DefaultInvoker implements Invoker
             function (ConfigPlaceholder|ObjectPlaceholder $arg): mixed {
                 if ($arg instanceof ConfigPlaceholder) {
                     // attempt to get config value
-                    if (!$this->container->config->has($arg->key)) {
+                    $config = $arg->category === 'default'
+                        ? $this->container->config
+                        : $this->container->get(Config::class, $arg->category);
+                    if (!$config->has($arg->key)) {
                         if (!$arg->is_optional) throw new RuntimeException("Config value for key {$arg->key} does not exist.");
                         $value = $arg->default;
                     } else {
-                        $value = $this->container->config->get($arg->key);
+                        $value = $config->get($arg->key);
                     }
                     // validate type
                     $this->validateConfigValueType($value, $arg->key, $arg->valid_types, $arg->allows_null);
