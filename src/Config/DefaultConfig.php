@@ -8,27 +8,32 @@ class DefaultConfig implements Config
 {
     /**
      * Default values
+     *
      * @var array<string,mixed>
      */
     protected array $defaults = [];
     /**
      * Explicitly set value
+     *
      * @var array<string,mixed>
      */
     protected array $values = [];
     /**
      * Values located by locators
+     *
      * @var array<string,mixed>
      */
     protected array $located = [];
     /**
      * Cache to save values and save lookups/comparisons
+     *
      * @var array<string,mixed>
      */
     protected array $cache = [];
     /**
      * Callbacks that may be used to locate config values that haven't been explicitly set.
      * Global locators run on any key.
+     *
      * @var array<callable(string):mixed>
      */
     protected array $global_locators = [];
@@ -36,6 +41,7 @@ class DefaultConfig implements Config
      * Callbacks that can locate config values, but only if they match a given prefix.
      * The locator callback will only be passed the key after the given prefix.
      * Prefix locators are higher-priority than global locators.
+     *
      * @var array<string,callable(string):mixed>
      */
     protected array $prefix_locators = [];

@@ -4,8 +4,8 @@ namespace Joby\ContextInjection\TestClasses;
 
 class TestClassA
 {
-    protected int $id;
     protected static int $id_counter = 0;
+    protected int $id;
 
     public function __construct()
     {

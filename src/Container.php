@@ -54,8 +54,9 @@ class Container
      * requested. If an object is given, it will be saved as a built object
      * and can be retrieved directly without instantiation.
      *
-     * @param class-string|object $class the class name or object to register
-     * @param string $category the category of the class, if applicable (i.e. "current" to get the current page for a request, etc.)
+     * @param class-string|object $class    the class name or object to register
+     * @param string              $category the category of the class, if applicable (i.e. "current" to get the current
+     *                                      page for a request, etc.)
      */
     public function register(
         string|object $class,
@@ -88,12 +89,13 @@ class Container
      * are retreivable even if they extend the class that is being requested.
      *
      * @param class-string $class
+     *
      * @return array<class-string>
      */
     protected function allClasses(string $class): array
     {
         return array_merge(
-            [$class], // start with the class itself
+            [$class],                    // start with the class itself
             class_parents($class) ?: [], // add all parent classes
             class_implements($class) ?: [] // add all interfaces implemented by the class
         );
@@ -104,8 +106,10 @@ class Container
      * or by instantiating it for the first time if necessary.
      *
      * @template T of object
-     * @param class-string<T> $class the class of object to retrieve
-     * @param string $category the category of the object, if applicable (i.e. "current" to get the current page for a request, etc.)
+     * @param class-string<T> $class    the class of object to retrieve
+     * @param string          $category the category of the object, if applicable (i.e. "current" to get the current
+     *                                  page for a request, etc.)
+     *
      * @return T
      */
     public function get(string $class, string $category = 'default'): object
@@ -121,8 +125,10 @@ class Container
      * Get the built copy of the given class if it exists.
      *
      * @template T of object
-     * @param class-string<T> $class the class of object to retrieve
-     * @param string $category the category of the object, if applicable (i.e. "current" to get the current page for a request, etc.)
+     * @param class-string<T> $class    the class of object to retrieve
+     * @param string          $category the category of the object, if applicable (i.e. "current" to get the current
+     *                                  page for a request, etc.)
+     *
      * @return T|null
      */
     protected function getBuilt(string $class, string $category): object|null
@@ -152,6 +158,7 @@ class Container
      * Check if a class is registered in the context under the given category,
      * without instantiating it. This is useful for checking if a class is
      * available without the overhead of instantiation.
+     *
      * @param class-string $class
      */
     public function isRegistered(
@@ -169,8 +176,10 @@ class Container
      * registered under the given category.
      *
      * @template T of object
-     * @param class-string<T> $class the class of object to instantiate
-     * @param string $category the category of the object, if applicable (i.e. "current" to get the current page for a request, etc.)
+     * @param class-string<T> $class    the class of object to instantiate
+     * @param string          $category the category of the object, if applicable (i.e. "current" to get the current
+     *                                  page for a request, etc.)
+     *
      * @return T
      */
     protected function instantiate(string $class, string $category): object

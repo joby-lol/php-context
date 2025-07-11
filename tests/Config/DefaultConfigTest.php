@@ -217,15 +217,15 @@ class DefaultConfigTest extends TestCase
     {
         $config = new DefaultConfig(
             prefix_locators: [
-                'db.' => function(string $key) {
-                    return match($key) {
+                'db.' => function (string $key) {
+                    return match ($key) {
                         'host' => 'localhost',
                         'port' => 3306,
                         default => null
                     };
                 },
-                'cache.' => function(string $key) {
-                    return match($key) {
+                'cache.' => function (string $key) {
+                    return match ($key) {
                         'enabled' => true,
                         default => null
                     };
@@ -245,12 +245,12 @@ class DefaultConfigTest extends TestCase
     {
         $config = new DefaultConfig(
             global_locators: [
-                function(string $key) {
+                function (string $key) {
                     return 'global';
                 }
             ],
             prefix_locators: [
-                'test.' => function(string $key) {
+                'test.' => function (string $key) {
                     return 'prefix';
                 }
             ]
@@ -268,7 +268,7 @@ class DefaultConfigTest extends TestCase
         $callCount = 0;
         $config = new DefaultConfig(
             global_locators: [
-                function(string $key) use (&$callCount) {
+                function (string $key) use (&$callCount) {
                     $callCount++;
                     return 'value';
                 }
@@ -285,7 +285,7 @@ class DefaultConfigTest extends TestCase
     {
         $config = new DefaultConfig(
             global_locators: [
-                function(string $key) {
+                function (string $key) {
                     throw new RuntimeException('Locator error');
                 }
             ]
@@ -301,7 +301,7 @@ class DefaultConfigTest extends TestCase
     {
         $config = new DefaultConfig(
             global_locators: [
-                function(string $key) {
+                function (string $key) {
                     return new InterpolatedValue('Value: ${other.key}');
                 }
             ]

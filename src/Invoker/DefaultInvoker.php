@@ -30,6 +30,7 @@ class DefaultInvoker implements Invoker
      *
      * @template T of object
      * @param class-string<T> $class
+     *
      * @return T
      * @throws ReflectionException
      * @noinspection PhpDocSignatureInspection
@@ -40,6 +41,125 @@ class DefaultInvoker implements Invoker
         else $object = new $class(...$this->buildFunctionArguments([$class, '__construct']));
         assert($object instanceof $class, "The instantiated object is not of type $class.");
         return $object;
+    }
+
+    /**
+     * @param callable|array{class-string|object,string} $fn
+     *
+     * @return array
+     * @throws ReflectionException
+     */
+    protected function buildFunctionArguments(callable|array $fn): array
+    {
+        if (is_string($fn) || $fn instanceof Closure) {
+            $reflection = new ReflectionFunction($fn);
+        } elseif (is_array($fn)) {
+            assert(is_string($fn[1]), 'The second element of the array must be a method name.');
+            assert(is_object($fn[0]) || (is_string($fn[0]) && class_exists($fn[0])), 'The first element of the array must be a class name or an object.');
+            $reflection = new ReflectionMethod($fn[0], $fn[1]);
+        } else {
+            throw new InvalidArgumentException('The provided callable is not a valid function or method.');
+        }
+        $parameters = $reflection->getParameters();
+        $args = [];
+        foreach ($parameters as $param) {
+            // get the type hint of the parameter
+            $type = (string)$param->getType();
+            assert(!empty($type), "The parameter {$param->getName()} does not have a type hint.");
+            assert(class_exists($type), "The type \"$type\" does not exist.");
+            // hook for extending paramter resolution
+            $hook = $this->resolveParameter($param);
+            if (!is_null($hook)) {
+                $args[] = $hook->value;
+                continue;
+            }
+            // if there is no ParameterValue attribute, we need to get the value
+            // first look for a ParameterCategory attribute so we can determine the category
+            $attr = $param->getAttributes(CategoryName::class);
+            if (count($attr) > 0) {
+                // if there is a ParameterCategory attribute, use its category
+                $category = $attr[0]->newInstance()->category;
+            } else {
+                $category = 'default';
+            }
+            // look for a ConfigValue attribute and use it to get a value from Config if it exists
+            $attr = $param->getAttributes(ConfigValue::class);
+            if (count($attr) > 0) {
+                $config = $this->container->get(Config::class);
+                $key = $attr[0]->newInstance()->key;
+                if (!$config->has($key)) {
+                    if ($param->isOptional()) {
+                        $args[] = $param->getDefaultValue();
+                        continue;
+                    }
+                    throw new RuntimeException(sprintf(
+                        'Error building argument for parameter "%s": Config key "%s" does not exist.',
+                        $param->getName(),
+                        $key,
+                    ));
+                }
+                $value = $config->get($key);
+                $types = $param->getType() instanceof ReflectionUnionType
+                    ? $param->getType()->getTypes()
+                    : [$param->getType()];
+                $types = array_map(fn($type) => (string)$type, $types);
+                $this->validateConfigValueType($value, $key, $param->getName(), $types, $param->allowsNull());
+                $args[] = $value;
+                continue;
+            }
+            // get value and add it to the args list
+            $args[] = $this->container->get($type, $category);
+        }
+        // return $args
+        return $args;
+    }
+
+    /**
+     * Resolve a parameter in your own way, if you want to easily extend this
+     * class, this method can be overridden to provide custom parameter
+     * resolution if you like. For example, you could add your own custom
+     * attributes, or even invent some whole new way of resolving parameters
+     * while still being able to fall back to the default style.
+     *
+     * If you return a ResolvedParameter, it will be used as the value for the
+     * parameter. If you return null, the default resolution will be used.
+     *
+     * @noinspection PhpUnusedParameterInspection
+     */
+    protected function resolveParameter(ReflectionParameter $param): ResolvedParameter|null
+    {
+        return null;
+    }
+
+    /**
+     * Validate that a config value is of the type expected by the parameter and throw an exception
+     * if it is an invalid/unexpected type.
+     */
+    protected function validateConfigValueType(mixed $value, string $key, string $param_name, array $types, bool $allowNull): void
+    {
+        if (is_null($value) && $allowNull) return;
+        foreach ($types as $type) {
+            $valid = match ($type) {
+                'int' => is_int($value),
+                'string' => is_string($value),
+                'float' => is_float($value),
+                'bool' => is_bool($value),
+                'array' => is_array($value),
+                'false' => $value === false,
+                default => $value instanceof $type
+            };
+            if ($valid) return;
+        }
+        sort($types);
+        $typeString = implode('|', $types);
+        if ($allowNull) $typeString .= '|null';
+        throw new ConfigTypeException(sprintf(
+            'Config value from "%s" for parameter "%s" must be of type %s, got %s',
+            $key,
+            $param_name,
+            $typeString,
+            get_debug_type($value)
+        ));
     }
 
     /**
@@ -139,125 +259,9 @@ class DefaultInvoker implements Invoker
     }
 
     /**
-     * @param callable|array{class-string|object,string} $fn
-     * @return array
-     * @throws ReflectionException
-     */
-    protected function buildFunctionArguments(callable|array $fn): array
-    {
-        if (is_string($fn) || $fn instanceof Closure) {
-            $reflection = new ReflectionFunction($fn);
-        } elseif (is_array($fn)) {
-            assert(is_string($fn[1]), 'The second element of the array must be a method name.');
-            assert(is_object($fn[0]) || (is_string($fn[0]) && class_exists($fn[0])), 'The first element of the array must be a class name or an object.');
-            $reflection = new ReflectionMethod($fn[0], $fn[1]);
-        } else {
-            throw new InvalidArgumentException('The provided callable is not a valid function or method.');
-        }
-        $parameters = $reflection->getParameters();
-        $args = [];
-        foreach ($parameters as $param) {
-            // get the type hint of the parameter
-            $type = (string)$param->getType();
-            assert(!empty($type), "The parameter {$param->getName()} does not have a type hint.");
-            assert(class_exists($type), "The type \"$type\" does not exist.");
-            // hook for extending paramter resolution
-            $hook = $this->resolveParameter($param);
-            if (!is_null($hook)) {
-                $args[] = $hook->value;
-                continue;
-            }
-            // if there is no ParameterValue attribute, we need to get the value
-            // first look for a ParameterCategory attribute so we can determine the category
-            $attr = $param->getAttributes(CategoryName::class);
-            if (count($attr) > 0) {
-                // if there is a ParameterCategory attribute, use its category
-                $category = $attr[0]->newInstance()->category;
-            } else {
-                $category = 'default';
-            }
-            // look for a ConfigValue attribute and use it to get a value from Config if it exists
-            $attr = $param->getAttributes(ConfigValue::class);
-            if (count($attr) > 0) {
-                $config = $this->container->get(Config::class);
-                $key = $attr[0]->newInstance()->key;
-                if (!$config->has($key)) {
-                    if ($param->isOptional()) {
-                        $args[] = $param->getDefaultValue();
-                        continue;
-                    }
-                    throw new RuntimeException(sprintf(
-                        'Error building argument for parameter "%s": Config key "%s" does not exist.',
-                        $param->getName(),
-                        $key,
-                    ));
-                }
-                $value = $config->get($key);
-                $types = $param->getType() instanceof ReflectionUnionType
-                    ? $param->getType()->getTypes()
-                    : [$param->getType()];
-                $types = array_map(fn($type) => (string)$type, $types);
-                $this->validateConfigValueType($value, $key, $param->getName(), $types, $param->allowsNull());
-                $args[] = $value;
-                continue;
-            }
-            // get value and add it to the args list
-            $args[] = $this->container->get($type, $category);
-        }
-        // return $args
-        return $args;
-    }
-
-    /**
-     * Resolve a parameter in your own way, if you want to easily extend this
-     * class, this method can be overridden to provide custom parameter
-     * resolution if you like. For example, you could add your own custom
-     * attributes, or even invent some whole new way of resolving parameters
-     * while still being able to fall back to the default style.
-     *
-     * If you return a ResolvedParameter, it will be used as the value for the
-     * parameter. If you return null, the default resolution will be used.
-     * @noinspection PhpUnusedParameterInspection
-     */
-    protected function resolveParameter(ReflectionParameter $param): ResolvedParameter|null
-    {
-        return null;
-    }
-
-    /**
-     * Validate that a config value is of the type expected by the parameter and throw an exception
-     * if it is an invalid/unexpected type.
-     */
-    protected function validateConfigValueType(mixed $value, string $key, string $param_name, array $types, bool $allowNull): void
-    {
-        if (is_null($value) && $allowNull) return;
-        foreach ($types as $type) {
-            $valid = match ($type) {
-                'int' => is_int($value),
-                'string' => is_string($value),
-                'float' => is_float($value),
-                'bool' => is_bool($value),
-                'array' => is_array($value),
-                'false' => $value === false,
-                default => $value instanceof $type
-            };
-            if ($valid) return;
-        };
-        sort($types);
-        $typeString = implode('|', $types);
-        if ($allowNull) $typeString .= '|null';
-        throw new ConfigTypeException(sprintf(
-            'Config value from "%s" for parameter "%s" must be of type %s, got %s',
-            $key,
-            $param_name,
-            $typeString,
-            get_debug_type($value)
-        ));
-    }
-
-    /**
      * @template T of object
      * @param callable(mixed...):T $fn
+     *
      * @return T|object
      * @throws ReflectionException
      */
@@ -275,9 +279,12 @@ class DefaultInvoker implements Invoker
 /**
  * Includes a PHP file in an isolated scope with extracted variables.
  *
- * @param string $path The path to the PHP file to be included.
- * @param array<string,mixed> $vars An associative array of variables to extract and make available in the included file's scope.
- * @return mixed Returns the result of the included file. Typically, this is the return value of the script if specified, or 1 if the script has no return value.
+ * @param string              $path The path to the PHP file to be included.
+ * @param array<string,mixed> $vars An associative array of variables to extract and make available in the included
+ *                                  file's scope.
+ *
+ * @return mixed Returns the result of the included file. Typically, this is the return value of the script if
+ *               specified, or 1 if the script has no return value.
  */
 function include_isolated(string $path, array $vars): mixed
 {

@@ -25,6 +25,7 @@ interface Invoker
      *
      * @template T of object
      * @param class-string<T> $class
+     *
      * @return T
      * @noinspection PhpDocSignatureInspection
      */
@@ -38,6 +39,7 @@ interface Invoker
      *
      * @template T of object
      * @param callable(mixed...):T $fn
+     *
      * @return T
      */
     public function execute(callable $fn): mixed;

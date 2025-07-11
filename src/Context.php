@@ -27,8 +27,10 @@ class Context
      * or by instantiating it for the first time if necessary.
      *
      * @template T of object
-     * @param class-string<T> $class the class of object to retrieve
-     * @param string $category the category of the object, if applicable (i.e. "current" to get the current page for a request, etc.)
+     * @param class-string<T> $class    the class of object to retrieve
+     * @param string          $category the category of the object, if applicable (i.e. "current" to get the current
+     *                                  page for a request, etc.)
+     *
      * @return T
      */
     public static function get(string $class, string $category = 'default'): mixed
@@ -51,8 +53,9 @@ class Context
      * requested. If an object is given, it will be saved as a built object
      * and can be retrieved directly without instantiation.
      *
-     * @param class-string|object $class the class name or object to register
-     * @param string $category the category of the class, if applicable (i.e. "current" to get the current page for a request, etc.)
+     * @param class-string|object $class    the class name or object to register
+     * @param string              $category the category of the class, if applicable (i.e. "current" to get the current
+     *                                      page for a request, etc.)
      */
     public static function register(string $class, string $category = "default"): void
     {
@@ -63,6 +66,7 @@ class Context
      * Check if a class is registered in the context under the given category,
      * without instantiating it. This is useful for checking if a class is
      * available without the overhead of instantiation.
+     *
      * @param class-string $class
      */
     public static function isRegistered(string $class): bool
