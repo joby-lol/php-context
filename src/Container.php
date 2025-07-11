@@ -2,6 +2,8 @@
 
 namespace Joby\ContextInjection;
 
+use Joby\ContextInjection\Cache\Cache;
+use Joby\ContextInjection\Cache\DefaultCache;
 use Joby\ContextInjection\Config\Config;
 use Joby\ContextInjection\Config\DefaultConfig;
 use Joby\ContextInjection\Invoker\DefaultInvoker;
@@ -10,6 +12,9 @@ use RuntimeException;
 
 class Container
 {
+    public readonly Cache $cache;
+    public readonly Config $config;
+    public readonly Invoker $invoker;
     /**
      * Array holding the classes that have been registered, including their
      * parent classes, sorted first by category and then by class name, listing
@@ -21,7 +26,6 @@ class Container
      * @var array<string, array<class-string, class-string>>
      */
     protected array $classes = [];
-
     /**
      * Array holding the built objects, indexed first by category and then by
      * class name. There will be multiple copies of most objects, as they are
@@ -30,7 +34,6 @@ class Container
      * @var array<string, array<class-string, object>>
      */
     protected array $built = [];
-
     /**
      * List of the current dependencies that are being instantiated to detect circular dependencies.
      *
@@ -38,10 +41,11 @@ class Container
      */
     protected array $instantiating = [];
 
-    public function __construct(Config|null $config = null, Invoker|null $invoker = null)
+    public function __construct(Config|null $config = null, Invoker|null $invoker_class = null, Cache|null $cache = null)
     {
-        $this->register($config ?? new DefaultConfig());
-        $this->register($invoker ?? DefaultInvoker::class);
+        $this->cache = $cache ?? new DefaultCache();
+        $this->config = $config ?? new DefaultConfig();
+        $this->invoker = $invoker_class ? new $invoker_class($this) : new DefaultInvoker($this);
     }
 
     /**
@@ -84,24 +88,6 @@ class Container
     }
 
     /**
-     * Get all the classes and interfaces that a given class inherits from or
-     * implements, including itself. This is used to ensure that all classes
-     * are retreivable even if they extend the class that is being requested.
-     *
-     * @param class-string $class
-     *
-     * @return array<class-string>
-     */
-    protected function allClasses(string $class): array
-    {
-        return array_merge(
-            [$class],                    // start with the class itself
-            class_parents($class) ?: [], // add all parent classes
-            class_implements($class) ?: [] // add all interfaces implemented by the class
-        );
-    }
-
-    /**
      * Get an object of the given class, either by retrieving a built copy of it
      * or by instantiating it for the first time if necessary.
      *
@@ -114,11 +100,59 @@ class Container
      */
     public function get(string $class, string $category = 'default'): object
     {
+        // short-circuit on built-in classes
+        if ($class === Invoker::class) return $this->invoker;
+        if ($class === Cache::class) return $this->cache;
+        if ($class === Config::class) return $this->config;
+        // normal get/instantiate
         $output = $this->getBuilt($class, $category)
             ?? $this->instantiate($class, $category);
         // otherwise return the output
         assert($output instanceof $class);
         return $output;
+    }
+
+    /**
+     * Check if a class is registered in the context under the given category,
+     * without instantiating it. This is useful for checking if a class is
+     * available without the overhead of instantiation.
+     *
+     * @param class-string $class
+     */
+    public function isRegistered(
+        string $class,
+        string $category = 'default',
+    ): bool
+    {
+        // short-circuit on built-in classes
+        if ($class === Invoker::class) return true;
+        if ($class === Cache::class) return true;
+        if ($class === Config::class) return true;
+        // check if the class is registered in the given category
+        return isset($this->classes[$category][$class]);
+    }
+
+    /**
+     * Get all the classes and interfaces that a given class inherits from or
+     * implements, including itself. This is used to ensure that all classes
+     * are retreivable even if they extend the class that is being requested.
+     *
+     * @param class-string $class
+     *
+     * @return array<class-string>
+     */
+    protected function allClasses(string $class): array
+    {
+        return $this->cache->cache(
+            key: 'container/allClasses/' . md5($class),
+            callback: function () use ($class) {
+                return array_merge(
+                    [$class],                    // start with the class itself
+                    class_parents($class) ?: [], // add all parent classes
+                    class_implements($class) ?: [] // add all interfaces implemented by the class
+                );
+            }
+        );
     }
 
     /**
@@ -155,22 +189,6 @@ class Container
     }
 
     /**
-     * Check if a class is registered in the context under the given category,
-     * without instantiating it. This is useful for checking if a class is
-     * available without the overhead of instantiation.
-     *
-     * @param class-string $class
-     */
-    public function isRegistered(
-        string $class,
-        string $category = 'default',
-    ): bool
-    {
-        // check if the class is registered in the given category
-        return isset($this->classes[$category][$class]);
-    }
-
-    /**
      * Instantiate the given class if it has not been instantiated yet. Returns
      * the built object when finished. Returns null if the given class is not
      * registered under the given category.
@@ -204,12 +222,7 @@ class Container
         // Mark this class as currently being instantiated
         $this->instantiating[$dependency_key] = true;
         // instantiate the class and save it under the built objects
-        // if the class is the Invoker it needs to be instantiated directly
-        if (is_a($actual_class, Invoker::class, true)) {
-            $built = new $actual_class($this);
-        } else {
-            $built = $this->get(Invoker::class)->instantiate($actual_class);
-        }
+        $built = $this->get(Invoker::class)->instantiate($actual_class);
         // save the built object under all parent classes and interfaces
         $all_classes = $this->allClasses($built::class);
         foreach ($all_classes as $alias_class) {

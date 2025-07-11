@@ -47,9 +47,8 @@ class DefaultInvokerIncludeTest extends TestCase
 
     public function testConfigValue(): void
     {
-        $con = new Container();
         $config = new DefaultConfig([], ['test_config_key' => 'test_value']);
-        $con->register($config);
+        $con = new Container(config: $config);
 
         $this->assertEquals(
             'test_value',
@@ -59,11 +58,10 @@ class DefaultInvokerIncludeTest extends TestCase
 
     public function testMultipleVariables(): void
     {
-        $con = new Container();
+        $config = new DefaultConfig([], ['test_config_key' => 'test_value']);
+        $con = new Container(config: $config);
         $con->register(TestClassA::class);
         $con->register(TestClassB::class);
-        $config = new DefaultConfig([], ['test_config_key' => 'test_value']);
-        $con->register($config);
 
         $a = $con->get(TestClassA::class);
         $b = $con->get(TestClassB::class);

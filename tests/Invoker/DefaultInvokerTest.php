@@ -210,13 +210,12 @@ class DefaultInvokerTest extends TestCase
     {
         $con = new Container();
         $inv = new DefaultInvoker($con);
-        $config = $con->get(Config::class);
 
         // Set up test values
-        $config->set('string.key', 'string value');
-        $config->set('int.key', 42);
-        $config->set('bool.key', true);
-        $config->set('array.key', ['test']);
+        $con->config->set('string.key', 'string value');
+        $con->config->set('int.key', 42);
+        $con->config->set('bool.key', true);
+        $con->config->set('array.key', ['test']);
 
         // Test correct types pass validation
         $this->assertEquals('string value', $inv->execute(

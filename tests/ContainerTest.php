@@ -2,6 +2,10 @@
 
 namespace Joby\ContextInjection;
 
+use Joby\ContextInjection\Cache\Cache;
+use Joby\ContextInjection\Cache\DefaultCache;
+use Joby\ContextInjection\Config\Config;
+use Joby\ContextInjection\Config\DefaultConfig;
 use Joby\ContextInjection\Invoker\DefaultInvoker;
 use Joby\ContextInjection\Invoker\Invoker;
 use Joby\ContextInjection\TestClasses\CircularClassA;
@@ -26,6 +30,14 @@ class ContainerTest extends TestCase
         $this->assertInstanceOf(
             DefaultInvoker::class,
             $con->get(Invoker::class)
+        );
+        $this->assertInstanceOf(
+            DefaultConfig::class,
+            $con->get(Config::class)
+        );
+        $this->assertInstanceOf(
+            DefaultCache::class,
+            $con->get(Cache::class)
         );
     }
 

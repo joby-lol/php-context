@@ -44,6 +44,119 @@ class DefaultInvoker implements Invoker
     }
 
     /**
+     * Include a given file, parsing for an opening docblock and resolving var tags as if they
+     * were dependencies to be loaded from the container.
+     *
+     * Because docblock tags don't support Attributes, their equivalents are just parsed as strings.
+     * Core attributes are available by inserting strings that look like them on lines preceding a var tag. The
+     * actual Attribute classes need not be included, because this system just looks for strings that
+     * look like `#[CategoryName("category_name")]` or `[ConfigValue("config_key")]`.
+     */
+    public function include(string $file): mixed
+    {
+        $content = file_get_contents($file);
+        if ($content === false) throw new RuntimeException("Could not read file $file.");
+        $vars = [];
+        // parse the first docblock at the start of the file
+        if (preg_match('/^\s*(?:<\?php\s+)?\/\*\*(.*?)\*\//s', $content, $matches)) {
+            // parse the docblock itself
+            $docblock = $matches[1];
+            $lines = preg_split('/\r?\n/', $docblock);
+            $lines = array_map(function ($line) {
+                return trim(preg_replace('/^\s*\*\s*/', '', $line));
+            }, $lines);
+            $currentCategory = null;
+            $currentConfigKey = null;
+            foreach ($lines as $line) {
+                if (!$line) continue;
+                // check for category attribute with double quotes
+                if (preg_match('/#\[CategoryName\("([^"]+)"\)]/', $line, $matches)) {
+                    $currentCategory = $matches[1];
+                    continue;
+                }
+                // check for category attribute with single quotes
+                if (preg_match('/#\[CategoryName\(\'([^\']+)\'\)]/', $line, $matches)) {
+                    $currentCategory = $matches[1];
+                    continue;
+                }
+                // check for config value attribute with double quotes
+                if (preg_match('/#\[ConfigValue\("([^"]+)"\)]/', $line, $matches)) {
+                    $currentConfigKey = $matches[1];
+                    continue;
+                }
+                // check for config value attribute with single quotes
+                if (preg_match('/#\[ConfigValue\(\'([^\']+)\'\)]/', $line, $matches)) {
+                    $currentConfigKey = $matches[1];
+                    continue;
+                }
+                // parse @var declarations
+                if (preg_match('/@var\s+([^\s]+)\s+\$([^\s]+)/', $line, $matches)) {
+                    $allowNull = false;
+                    $type = $matches[1];
+                    if (str_starts_with($type, '?')) {
+                        $allowNull = true;
+                        $type = substr($type, 1);
+                    } elseif (str_starts_with($type, 'null|')) {
+                        $allowNull = true;
+                        $type = substr($type, 5);
+                    } elseif (str_ends_with($type, '|null')) {
+                        $allowNull = true;
+                        $type = substr($type, 0, -5);
+                    }
+                    // check if objects are a fully qualified class name
+                    if (!in_array($type, ['int', 'string', 'float', 'bool', 'array', 'false'])) {
+                        // this is a non-scalar type
+                        $type = ltrim($type, '\\');
+                        if (!class_exists($type)) {
+                            // search the whole file for a use statement ending with this class name
+                            $pattern1 = '/use\s+([^;]+\\\\' . preg_quote($type) . ')\s*;/m';
+                            $pattern2 = '/use\s+([^\s]+)\s+as\s+' . preg_quote($type) . '\s*;/m';
+                            if (preg_match($pattern1, $content, $m)) {
+                                $type = $m[1];
+                            } elseif (preg_match($pattern2, $content, $m)) {
+                                $type = $m[1];
+                            } else {
+                                throw new RuntimeException("Could not find use statement for class $type.");
+                            }
+                        }
+                    }
+                    // build value
+                    $varName = $matches[2];
+                    if ($currentConfigKey) {
+                        // find config value
+                        $config = $this->container->get(Config::class, $currentCategory ?? 'default');
+                        $value = $config->get($currentConfigKey);
+                        $this->validateConfigValueType($value, $currentConfigKey, $varName, [$type], $allowNull);
+                        $vars[$varName] = $value;
+                    } else {
+                        // try to get object
+                        $vars[$varName] = $this->container->get($type, $currentCategory ?? 'default');
+                    }
+                }
+            }
+        }
+        // extract variables into scope, include the file and return its output
+        return include_isolated($file, $vars);
+    }
+
+    /**
+     * @template T of object
+     * @param callable(mixed...):T $fn
+     *
+     * @return T|object
+     * @throws ReflectionException
+     */
+    public
+    function execute(callable $fn): mixed
+    {
+        assert(is_string($fn) || $fn instanceof Closure, 'The provided callable must be a string or a Closure.');
+        $reflection = new ReflectionFunction($fn);
+        // call with built arguments and return result
+        // @phpstan-ignore-next-line this will always return the return type of the passed callable
+        return $reflection->invokeArgs($this->buildFunctionArguments($fn));
+    }
+
+    /**
      * @param callable|array{class-string|object,string} $fn
      *
      * @return array
@@ -160,119 +273,6 @@ class DefaultInvoker implements Invoker
             $typeString,
             get_debug_type($value)
         ));
-    }
-
-    /**
-     * Include a given file, parsing for an opening docblock and resolving var tags as if they
-     * were dependencies to be loaded from the container.
-     *
-     * Because docblock tags don't support Attributes, their equivalents are just parsed as strings.
-     * Core attributes are available by inserting strings that look like them on lines preceding a var tag. The
-     * actual Attribute classes need not be included, because this system just looks for strings that
-     * look like `#[CategoryName("category_name")]` or `[ConfigValue("config_key")]`.
-     */
-    public function include(string $file): mixed
-    {
-        $content = file_get_contents($file);
-        if ($content === false) throw new RuntimeException("Could not read file $file.");
-        $vars = [];
-        // parse the first docblock at the start of the file
-        if (preg_match('/^\s*(?:<\?php\s+)?\/\*\*(.*?)\*\//s', $content, $matches)) {
-            // parse the docblock itself
-            $docblock = $matches[1];
-            $lines = preg_split('/\r?\n/', $docblock);
-            $lines = array_map(function ($line) {
-                return trim(preg_replace('/^\s*\*\s*/', '', $line));
-            }, $lines);
-            $currentCategory = null;
-            $currentConfigKey = null;
-            foreach ($lines as $line) {
-                if (!$line) continue;
-                // check for category attribute with double quotes
-                if (preg_match('/#\[CategoryName\("([^"]+)"\)]/', $line, $matches)) {
-                    $currentCategory = $matches[1];
-                    continue;
-                }
-                // check for category attribute with single quotes
-                if (preg_match('/#\[CategoryName\(\'([^\']+)\'\)]/', $line, $matches)) {
-                    $currentCategory = $matches[1];
-                    continue;
-                }
-                // check for config value attribute with double quotes
-                if (preg_match('/#\[ConfigValue\("([^"]+)"\)]/', $line, $matches)) {
-                    $currentConfigKey = $matches[1];
-                    continue;
-                }
-                // check for config value attribute with single quotes
-                if (preg_match('/#\[ConfigValue\(\'([^\']+)\'\)]/', $line, $matches)) {
-                    $currentConfigKey = $matches[1];
-                    continue;
-                }
-                // parse @var declarations
-                if (preg_match('/@var\s+([^\s]+)\s+\$([^\s]+)/', $line, $matches)) {
-                    $allowNull = false;
-                    $type = $matches[1];
-                    if (str_starts_with($type, '?')) {
-                        $allowNull = true;
-                        $type = substr($type, 1);
-                    } elseif (str_starts_with($type, 'null|')) {
-                        $allowNull = true;
-                        $type = substr($type, 5);
-                    } elseif (str_ends_with($type, '|null')) {
-                        $allowNull = true;
-                        $type = substr($type, 0, -5);
-                    }
-                    // check if objects are a fully qualified class name
-                    if (!in_array($type, ['int', 'string', 'float', 'bool', 'array', 'false'])) {
-                        // this is a non-scalar type
-                        $type = ltrim($type, '\\');
-                        if (!class_exists($type)) {
-                            // search the whole file for a use statement ending with this class name
-                            $pattern1 = '/use\s+([^;]+\\\\' . preg_quote($type) . ')\s*;/m';
-                            $pattern2 = '/use\s+([^\s]+)\s+as\s+' . preg_quote($type) . '\s*;/m';
-                            if (preg_match($pattern1, $content, $m)) {
-                                $type = $m[1];
-                            } elseif (preg_match($pattern2, $content, $m)) {
-                                $type = $m[1];
-                            } else {
-                                throw new RuntimeException("Could not find use statement for class $type.");
-                            }
-                        }
-                    }
-                    // build value
-                    $varName = $matches[2];
-                    if ($currentConfigKey) {
-                        // find config value
-                        $config = $this->container->get(Config::class, $currentCategory ?? 'default');
-                        $value = $config->get($currentConfigKey);
-                        $this->validateConfigValueType($value, $currentConfigKey, $varName, [$type], $allowNull);
-                        $vars[$varName] = $value;
-                    } else {
-                        // try to get object
-                        $vars[$varName] = $this->container->get($type, $currentCategory ?? 'default');
-                    }
-                }
-            }
-        }
-        // extract variables into scope, include the file and return its output
-        return include_isolated($file, $vars);
-    }
-
-    /**
-     * @template T of object
-     * @param callable(mixed...):T $fn
-     *
-     * @return T|object
-     * @throws ReflectionException
-     */
-    public
-    function execute(callable $fn): mixed
-    {
-        assert(is_string($fn) || $fn instanceof Closure, 'The provided callable must be a string or a Closure.');
-        $reflection = new ReflectionFunction($fn);
-        // call with built arguments and return result
-        // @phpstan-ignore-next-line this will always return the return type of the passed callable
-        return $reflection->invokeArgs($this->buildFunctionArguments($fn));
     }
 }
 
