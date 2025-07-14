@@ -60,8 +60,14 @@ class DefaultInvoker implements Invoker
                 $content = file_get_contents($file);
                 if ($content === false) throw new RuntimeException("Could not read file $file.");
                 $vars = [];
+                $namespace = null;
+                // look for a namespace declaration
+                if (preg_match('/^namespace\s+([^;]+);/m', $content, $matches)) {
+                    $namespace = $matches[1];
+                    $namespace = trim($namespace, '\\');
+                }
                 // parse the first docblock at the start of the file
-                if (preg_match('/^\s*(?:<\?php\s+)?\/\*\*(.*?)\*\//s', $content, $matches)) {
+                if (preg_match('/\/\*\*(.*?)\*\//s', $content, $matches)) {
                     // parse the docblock itself
                     $docblock = $matches[1];
                     $lines = preg_split('/\r?\n/', $docblock);
@@ -106,31 +112,53 @@ class DefaultInvoker implements Invoker
                                 $allowNull = true;
                                 $type = substr($type, 0, -5);
                             }
-                            // check if objects are a fully qualified class name
-                            if (!in_array($type, ['int', 'string', 'float', 'bool', 'array', 'false'])) {
-                                // this is a non-scalar type
-                                $type = ltrim($type, '\\');
-                                if (!class_exists($type)) {
-                                    // search the whole file for a use statement ending with this class name
-                                    $pattern1 = '/use\s+([^;]+\\\\' . preg_quote($type) . ')\s*;/m';
-                                    $pattern2 = '/use\s+([^\s]+)\s+as\s+' . preg_quote($type) . '\s*;/m';
-                                    if (preg_match($pattern1, $content, $m)) {
-                                        $type = $m[1];
-                                    } elseif (preg_match($pattern2, $content, $m)) {
-                                        $type = $m[1];
+                            $types = explode('|', $type);
+                            $types = array_map(
+                                function (string $type) use ($content, $namespace): string {
+                                    // return scalar types unchanged
+                                    if (in_array($type, ['int', 'string', 'float', 'bool', 'array', 'false'])) return $type;
+                                    // make relative to namespace if type doesn't start with a slash
+                                    if (str_starts_with($type, '\\')) {
+                                        $relative = false;
+                                        $type = substr($type, 1);
                                     } else {
-                                        throw new RuntimeException("Could not find use statement for class $type.");
+                                        $relative = true;
                                     }
-                                }
-                            }
+                                    // check if objects are a fully qualified class name
+                                    if (!class_exists($type)) {
+                                        // search the whole file for a use statement ending with this class name
+                                        $pattern1 = '/use\s+([^;]+\\\\' . preg_quote($type) . ')\s*;/m';
+                                        $pattern2 = '/use\s+([^\s]+)\s+as\s+' . preg_quote($type) . '\s*;/m';
+                                        if (preg_match($pattern1, $content, $m)) {
+                                            $type = $m[1];
+                                            $relative = false;
+                                        } elseif (preg_match($pattern2, $content, $m)) {
+                                            $type = $m[1];
+                                            $relative = false;
+                                        } else {
+                                            // if this is a relative class and there is a namespace, prepend the namespace
+                                            if ($relative && $namespace) {
+                                                $class = $namespace . '\\' . $type;
+                                                if (class_exists($class)) {
+                                                    return $class;
+                                                }
+                                            }
+                                            throw new RuntimeException("Could not find use statement for class $type.");
+                                        }
+                                    }
+                                    // return parsed type
+                                    return $type;
+                                },
+                                $types
+                            );
                             // build value
+                            sort($types);
                             $varName = $matches[2];
                             if ($currentConfigKey) {
                                 // this variable is a config value
-                                // TODO: handle union types for config
                                 $vars[$varName] = new ConfigPlaceholder(
                                     $currentConfigKey,
-                                    [$type],
+                                    $types,
                                     false,
                                     null,
                                     $allowNull,
@@ -138,6 +166,10 @@ class DefaultInvoker implements Invoker
                                 );
                             } else {
                                 // this variable is an object
+                                if (count($types) > 1) {
+                                    throw new RuntimeException("Cannot use union types for objects.");
+                                }
+                                $type = reset($types);
                                 $vars[$varName] = new ObjectPlaceholder($type, $currentCategory ?? 'default');
                             }
                         }

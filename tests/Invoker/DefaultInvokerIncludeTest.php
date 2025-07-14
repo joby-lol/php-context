@@ -167,4 +167,23 @@ class DefaultInvokerIncludeTest extends TestCase
         $result = $con->get(Invoker::class)->include(__DIR__ . '/include_tests/testIntType.php');
         $this->assertEquals(42, $result);
     }
+
+    public function testNoUnionTypesForObjects(): void
+    {
+        $con = new Container();
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Cannot use union types for objects.');
+        $con->invoker->include(__DIR__ . '/include_tests/testNoUnionTypesForObjects.php');
+    }
+
+    public function testIncludesFromNamespace(): void
+    {
+        $con = new Container();
+        $con->register(TestClassA::class);
+        $con->config->set('test_int_key', 42);
+        $result = $con->invoker->include(__DIR__ . '/include_tests/testIncludesFromNamespace.php');
+        $this->assertEquals($con->get(TestClassA::class), $result['a']);
+        $this->assertEquals($con->config, $result['c']);
+        $this->assertEquals(42, $result['i']);
+    }
 }
