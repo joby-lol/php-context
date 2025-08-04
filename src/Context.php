@@ -1,5 +1,28 @@
 <?php
 
+/**
+ * Context Injection: https://go.joby.lol/php-context/
+ * MIT License: Copyright (c) 2025 Joby Elliott
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 namespace Joby\ContextInjection;
 
 /**
@@ -10,6 +33,21 @@ namespace Joby\ContextInjection;
  * It is also designed to gracefully allow stepping into and out of additional contexts, which are kept on a stack so
  * that when you end a context, you revert to the prior one. This is useful for things like atomic rollbacks, building
  * additional requests without impacting the main one, etc.
+ *
+ * There are also global functions for accessing the main functionality in an even more convenient way. They are simply
+ * aliases of the main methods of this class and the Invoker:
+ *
+ * Get an object:
+ * Context::get() => ctx()
+ *
+ * Register a class or object:
+ * Context::register() => ctx_register()
+ *
+ * Execute a callable with injectable dependencies:
+ * Context::get(Invoker::class)->execute() => ctx_execute()
+ *
+ * Include a file with injectable type-hinted variables:
+ * Context::get(Invoker::class)->include() => ctx_include()
  */
 class Context
 {
@@ -33,15 +71,6 @@ class Context
     public static function get(string $class, string $category = 'default'): mixed
     {
         return static::container()->get($class, $category);
-    }
-
-    /**
-     * Create a new empty Container. This is in its own method so that it can be overridden by child classes if you want
-     * to create your own domain-specific Context class based on this one.
-     */
-    protected static function createContainer(): Container
-    {
-        return new Container();
     }
 
     /**
@@ -122,5 +151,14 @@ class Context
     public static function has(string $class): bool
     {
         return static::container()->has($class);
+    }
+
+    /**
+     * Create a new empty Container. This is in its own method so that it can be overridden by child classes if you want
+     * to create your own domain-specific Context class based on this one.
+     */
+    protected static function createContainer(): Container
+    {
+        return new Container();
     }
 }

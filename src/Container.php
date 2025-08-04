@@ -1,4 +1,27 @@
-<?php /** @noinspection ALL */
+<?php
+
+/**
+ * Context Injection: https://go.joby.lol/php-context/
+ * MIT License: Copyright (c) 2025 Joby Elliott
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 
 namespace Joby\ContextInjection;
 
@@ -11,6 +34,11 @@ use Joby\ContextInjection\Invoker\Invoker;
 use Psr\Container\ContainerInterface;
 use RuntimeException;
 
+/**
+ * A container implementation that provides dependency injection and object management functionalities. This container
+ * allows registrations of classes or objects, instantiation of classes on demand, and management of object
+ * dependencies, optionally split across multiple named categories.
+ */
 class Container implements ContainerInterface
 {
     public readonly Cache $cache;
@@ -111,25 +139,25 @@ class Container implements ContainerInterface
      * or by instantiating it for the first time if necessary.
      *
      * @template T of object
-     * @param class-string<T> $class    the class of object to retrieve
+     * @param class-string<T> $id       the class of object to retrieve
      * @param string          $category the category of the object, if applicable (i.e. "current" to get the current
      *                                  page for a request, etc.)
      *
      * @return T
      */
-    public function get(string $class, string $category = 'default'): object
+    public function get(string $id, string $category = 'default'): object
     {
         // short-circuit on built-in classes
         if ($category === 'default') {
-            if ($class === Invoker::class) return $this->invoker;
-            if ($class === Cache::class) return $this->cache;
-            if ($class === Config::class) return $this->config;
+            if ($id === Invoker::class) return $this->invoker;
+            if ($id === Cache::class) return $this->cache;
+            if ($id === Config::class) return $this->config;
         }
         // normal get/instantiate
-        $output = $this->getBuilt($class, $category)
-            ?? $this->instantiate($class, $category);
+        $output = $this->getBuilt($id, $category)
+            ?? $this->instantiate($id, $category);
         // otherwise return the output
-        assert($output instanceof $class);
+        assert($output instanceof $id);
         return $output;
     }
 
@@ -138,19 +166,19 @@ class Container implements ContainerInterface
      * without instantiating it. This is useful for checking if a class is
      * available without the overhead of instantiation.
      *
-     * @param class-string $class
+     * @param class-string $id
      */
     public function has(
-        string $class,
+        string $id,
         string $category = 'default',
     ): bool
     {
         // short-circuit on built-in classes
-        if ($class === Invoker::class) return true;
-        if ($class === Cache::class) return true;
-        if ($class === Config::class) return true;
+        if ($id === Invoker::class) return true;
+        if ($id === Cache::class) return true;
+        if ($id === Config::class) return true;
         // check if the class is registered in the given category
-        return isset($this->classes[$category][$class]);
+        return isset($this->classes[$category][$id]);
     }
 
     /**

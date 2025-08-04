@@ -217,19 +217,19 @@ class DefaultConfigTest extends TestCase
     {
         $config = new DefaultConfig(
             prefix_locators: [
-                'db.' => function (string $key) {
+                'db.' => [function (string $key) {
                     return match ($key) {
                         'host' => 'localhost',
                         'port' => 3306,
                         default => null
                     };
-                },
-                'cache.' => function (string $key) {
+                }],
+                'cache.' => [function (string $key) {
                     return match ($key) {
                         'enabled' => true,
                         default => null
                     };
-                }
+                }]
             ]
         );
 
@@ -250,9 +250,9 @@ class DefaultConfigTest extends TestCase
                 }
             ],
             prefix_locators: [
-                'test.' => function (string $key) {
+                'test.' => [function (string $key) {
                     return 'prefix';
-                }
+                }]
             ]
         );
 
