@@ -35,6 +35,7 @@ use ReflectionFunction;
 use ReflectionMethod;
 use ReflectionUnionType;
 use RuntimeException;
+use Throwable;
 
 /**
  * Utility class for reflection and invocation of classes and functions, used to
@@ -42,6 +43,8 @@ use RuntimeException;
  */
 class DefaultInvoker implements Invoker
 {
+    protected IncludeGuard|null $include_guard;
+
     public function __construct(protected Container $container)
     {
     }
@@ -74,21 +77,35 @@ class DefaultInvoker implements Invoker
      * actual Attribute classes need not be included, because this system just looks for strings that
      * look like `#[CategoryName("category_name")]` or `[ConfigValue("config_key")]`.
      *
+     * This method will return either the output of the included file, or the value returned by it if there is one.
+     * Note that if the included script explicitly returns the integer "1" that cannot be differentiated from returning
+     * nothing at all. Generally the best practice is to return objects if you are returning anything, for unambigous
+     * behavior. Although non-integer values are also a reasonable choice.
+     *
      * @throws \Psr\SimpleCache\InvalidArgumentException
      * @throws ReflectionException
+     * @throws IncludeException
      */
     public function include(string $file): mixed
     {
-        $key = md5_file($file);
+        // clean up path
+        $path = realpath($file);
+        if (!$path) throw new RuntimeException("File $file does not exist.");
+        // check that file is readable
+        if (!is_readable($path)) throw new RuntimeException("File $file is not readable.");
+        // check that path is allowed to be included, if an IncludeGuard is registered
+        if (false === $this->includeGuard()?->check($path)) throw new RuntimeException("File $file is not allowed to be included.");
+        // cache further operations
+        $key = md5_file($path);
         /** @var array<string,ConfigPlaceholder|ObjectPlaceholder> $vars */
         $vars = $this->cache(
             "include/vars/$key",
             /**
              * @return array<string,ConfigPlaceholder|ObjectPlaceholder>
              */
-            function () use ($file): array {
-                $content = file_get_contents($file);
-                if ($content === false) throw new RuntimeException("Could not read file $file.");
+            function () use ($path): array {
+                $content = file_get_contents($path);
+                if ($content === false) throw new RuntimeException("Could not read file");
                 $vars = [];
                 $namespace = null;
                 // look for a namespace declaration
@@ -208,7 +225,7 @@ class DefaultInvoker implements Invoker
             }
         );
         // extract variables into scope, include the file and return its output
-        return include_isolated($file, $this->resolvePlaceholders($vars));
+        return include_isolated($path, $this->resolvePlaceholders($vars));
     }
 
     /**
@@ -227,6 +244,17 @@ class DefaultInvoker implements Invoker
         // call with built arguments and return result
         // @phpstan-ignore-next-line this will always return the return type of the passed callable
         return $reflection->invokeArgs($this->buildFunctionArguments($fn));
+    }
+
+    protected function includeGuard(): IncludeGuard|null
+    {
+        if (!isset($this->include_guard)) {
+            $this->include_guard = null;
+            if ($this->container->has(IncludeGuard::class)) {
+                $this->include_guard = $this->container->get(IncludeGuard::class);
+            }
+        }
+        return $this->include_guard;
     }
 
     /**
@@ -411,17 +439,33 @@ class DefaultInvoker implements Invoker
 }
 
 /**
- * Includes a PHP file in an isolated scope with extracted variables.
+ * Includes a PHP file in an isolated scope with extracted variables. Note that if the included script explicitly
+ * returns the integer "1" that cannot be differentiated from returning nothing at all. Generally the best practice is
+ * to return objects if you are returning anything, for unambiguous behavior. Although non-integer values are also a
+ * reasonable choice.
  *
  * @param string              $path The path to the PHP file to be included.
  * @param array<string,mixed> $vars An associative array of variables to extract and make available in the included
  *                                  file's scope.
  *
- * @return mixed Returns the result of the included file. Typically, this is the return value of the script if
- *               specified, or 1 if the script has no return value.
+ * @return mixed|string Returns the result of the included file if it was not the integer value 1, otherwise returns
+ *                      the results of output buffering during execution.
+ *
+ * @throws IncludeException If an error occurs during the execution of the included file.
  */
 function include_isolated(string $path, array $vars): mixed
 {
-    extract($vars);
-    return include $path;
+    ob_start();
+    try {
+        extract($vars);
+        $return = include $path;
+    } catch (Throwable $th) {
+        $buffer = ob_get_contents();
+        ob_end_clean();
+        throw new IncludeException($path, $th, $buffer);
+    }
+    $buffer = ob_get_contents();
+    ob_end_clean();
+    if ($return === 1) return $buffer;
+    return $return;
 }

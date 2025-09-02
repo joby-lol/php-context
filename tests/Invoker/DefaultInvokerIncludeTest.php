@@ -9,6 +9,7 @@ use Joby\ContextInjection\TestClasses\TestClassA;
 use Joby\ContextInjection\TestClasses\TestClassB;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
+use Throwable;
 
 class DefaultInvokerIncludeTest extends TestCase
 {
@@ -116,7 +117,7 @@ class DefaultInvokerIncludeTest extends TestCase
     {
         $con = new Container();
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Could not read file');
+        $this->expectExceptionMessage('does not exist');
         $con->get(Invoker::class)->include(__DIR__ . '/include_tests/non_existent_file.php');
     }
 
@@ -185,5 +186,51 @@ class DefaultInvokerIncludeTest extends TestCase
         $this->assertEquals($con->get(TestClassA::class), $result['a']);
         $this->assertEquals($con->config, $result['c']);
         $this->assertEquals(42, $result['i']);
+    }
+
+    public function testIncludesWithBufferedOutput(): void
+    {
+        $con = new Container();
+        $con->config->set('test_value', 'test');
+        $result = $con->invoker->include(__DIR__ . '/include_tests/testIncludesWithBufferedOutput.php');
+        $this->assertEquals('test_value: test', $result);
+    }
+
+    public function testIncludesWithBufferedOutputWhen1IsReturned(): void
+    {
+        $con = new Container();
+        $con->config->set('test_value', 'test');
+        $result = $con->invoker->include(__DIR__ . '/include_tests/testIncludesWithBufferedOutputWhen1IsReturned.php');
+        $this->assertEquals('test_value: test', $result);
+    }
+
+    public function testIncludesWithException(): void
+    {
+        $con = new Container();
+        try {
+            $con->invoker->include(__DIR__ . '/include_tests/testIncludesWithException.php');
+            $this->fail('Expected exception not thrown');
+        } catch (IncludeException $e) {
+            $this->assertInstanceOf(RuntimeException::class, $e->include_exception);
+            $this->assertInstanceOf(RuntimeException::class, $e->getPrevious());
+            $this->assertEquals($e->include_exception, $e->getPrevious());
+            $this->assertEquals('output buffer value', $e->output_buffer);
+            $this->assertEquals(realpath(__DIR__ . '/include_tests/testIncludesWithException.php'), $e->include_path);
+        } catch (Throwable $th) {
+            $this->fail('Unexpected exception thrown: ' . $th->getMessage());
+        }
+    }
+
+    public function testIncludesWithIncludeGuard(): void
+    {
+        $guard = $this->createMock(IncludeGuard::class);
+        $guard->expects($this->once())
+            ->method('check')
+            ->with(realpath(__DIR__ . '/include_tests/empty.php'))
+            ->willReturn(true);
+        $con = new Container();
+        $con->register($guard);
+        $con->get(Invoker::class)->includeGuard = $guard;
+        $con->get(Invoker::class)->include(__DIR__ . '/include_tests/empty.php');
     }
 }

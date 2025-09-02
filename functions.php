@@ -74,6 +74,11 @@ function ctx_execute(callable $fn): mixed
  *  actual Attribute classes need not be included, because this system just looks for strings that
  *  look like `#[CategoryName("category_name")]` or `[ConfigValue("config_key")]`.
  *
+ *  This method will return either the output of the included file, or the value returned by it if there is one.
+ *  Note that if the included script explicitly returns the integer "1" that cannot be differentiated from returning
+ *  nothing at all. Generally the best practice is to return objects if you are returning anything, for unambiguous
+ *  behavior. Although non-integer values are also a reasonable choice.
+ *
  * @throws ReflectionException
  * @throws \Psr\SimpleCache\InvalidArgumentException
  */
