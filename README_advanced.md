@@ -1,26 +1,28 @@
 # Context Injection - Advanced Documentation
 
-This document provides detailed information about the internal components and advanced features of the Context Injection library.
+This document provides detailed information about the internal components and advanced features of the Context Injection
+library.
 
 ## Table of Contents
 
 - [The Context Class](#the-context-class)
 - [The Container Class](#the-container-class)
 - [Attributes](#attributes)
-  - [ConfigValue Attribute](#configvalue-attribute)
-  - [CategoryName Attribute](#categoryname-attribute)
+    - [ConfigValue Attribute](#configvalue-attribute)
+    - [CategoryName Attribute](#categoryname-attribute)
 - [Configuration System](#configuration-system)
-  - [Config Interface](#config-interface)
-  - [DefaultConfig Implementation](#defaultconfig-implementation)
-  - [ConfigValue Types](#configvalue-types)
-    - [InterpolatedValue](#interpolatedvalue)
-    - [LazyValue](#lazyvalue)
-    - [NullValue](#nullvalue)
-  - [Advanced Configuration Features](#advanced-configuration-features)
+    - [Config Interface](#config-interface)
+    - [DefaultConfig Implementation](#defaultconfig-implementation)
+    - [ConfigValue Types](#configvalue-types)
+        - [InterpolatedValue](#interpolatedvalue)
+        - [LazyValue](#lazyvalue)
+        - [NullValue](#nullvalue)
+    - [Advanced Configuration Features](#advanced-configuration-features)
 
 ## The Context Class
 
-The `Context` class is the main static entry point for the Context Injection system. It provides static methods for retrieving objects, registering classes/objects, and checking if a class is registered.
+The `Context` class is the main static entry point for the Context Injection system. It provides static methods for
+retrieving objects, registering classes/objects, and checking if a class is registered.
 
 ```php
 namespace Joby\ContextInjection;
@@ -41,16 +43,20 @@ class Context
 }
 ```
 
-The `Context` class is designed to be used in a static context, so it can be accessed from anywhere in your codebase without needing to pass it around. It acts as a facade for the underlying `Container` instance.
+The `Context` class is designed to be used in a static context, so it can be accessed from anywhere in your codebase
+without needing to pass it around. It acts as a facade for the underlying `Container` instance.
 
 Key features:
+
 - Not marked as `final`, so you can extend it to create your own context injector
-- By default child classes will share their container with the parent Context class, but this can be overridden by changing their CONTEXT_CLASS constant
+- By default child classes will share their container with the parent Context class, but this can be overridden by
+  changing their CONTEXT_CLASS constant
 - Provides a simple static API for the most common operations
 
 ## The Container Class
 
-The `Container` class is responsible for managing registered classes and objects. It provides methods for registering classes/objects, retrieving objects, and checking if a class is registered.
+The `Container` class is responsible for managing registered classes and objects. It provides methods for registering
+classes/objects, retrieving objects, and checking if a class is registered.
 
 ```php
 namespace Joby\ContextInjection;
@@ -72,6 +78,7 @@ class Container
 ```
 
 Key features:
+
 - Manages registered classes and objects by category
 - Handles instantiation of objects when needed
 - Detects and prevents circular dependencies
@@ -81,30 +88,32 @@ Key features:
 ### How the Container Works
 
 1. When you register a class or object, the container:
-   - Stores the class name in the `$classes` array
-   - If an object is provided, stores it in the `$built` array
-   - Registers all parent classes and interfaces as aliases
+    - Stores the class name in the `$classes` array
+    - If an object is provided, stores it in the `$built` array
+    - Registers all parent classes and interfaces as aliases
 
 2. When you request an object, the container:
-   - Checks if the object is already built and returns it if available
-   - Otherwise, instantiates the object using the `Invoker`
-   - Stores the built object for future requests
-   - Returns the object
+    - Checks if the object is already built and returns it if available
+    - Otherwise, instantiates the object using the `Invoker`
+    - Stores the built object for future requests
+    - Returns the object
 
 3. The container uses the `Invoker` to instantiate objects, which:
-   - Analyzes the constructor parameters
-   - Resolves dependencies from the container
-   - Creates the object with the resolved dependencies
+    - Analyzes the constructor parameters
+    - Resolves dependencies from the container
+    - Creates the object with the resolved dependencies
 
 ## Attributes
 
-The Context Injection library uses PHP 8 attributes to provide additional information about how dependencies should be resolved.
+The Context Injection library uses PHP 8 attributes to provide additional information about how dependencies should be
+resolved.
 
 ### ConfigValue Attribute
 
 The `ConfigValue` attribute is used to inject configuration values into function parameters.
 
 Usage example:
+
 ```php
 function generateReport(
     #[ConfigValue('app.name')] string $appName,
@@ -119,9 +128,11 @@ ctx_execute('generateReport');
 
 ### CategoryName Attribute
 
-The `CategoryName` attribute is used to specify the category from which a parameter should be pulled when injecting dependencies.
+The `CategoryName` attribute is used to specify the category from which a parameter should be pulled when injecting
+dependencies.
 
 Usage example:
+
 ```php
 function processUser(
     #[CategoryName('current')] User $user,
@@ -139,9 +150,45 @@ ctx_register($currentUser, 'current');
 ctx_execute('processUser');
 ```
 
+## IncludeGuard services
+
+The Context Injection library provides an `IncludeGuard` interface that can be used to check whether a given file is
+allowed to be included. By default, this is used in the `Invoker` as a mechanism for preventing the inclusion of
+untrusted files. The interface is a single `check($filename)` method that returns a boolean indicating whether the file
+is allowed to be included. You can implement your own `IncludeGuard` service to customize the behavior, or you can use
+the `DefaultIncludeGuard` service that provides simple allow/deny lists of allowed files and/or folders.
+
+The `IncludeGuard` interface is intended as a general-purpose mechanism for preventing untrusted code from being
+included, and may also be used by other services if they need to check whether a file is allowed to be
+included/executed.
+
+### DefaultIncludeGuard Implementation
+
+Default include guard implementation. Does basic checks to allow and deny includes by directory or full directory. File
+rules take precedence over directory rules, and after that deny rules take precedence over allow rules. This means that
+you can allow a directory, but deny files or subdirectories within it. It also means that you can deny a directory, but
+allow specific files within it.
+
+```php
+namespace Joby\ContextInjection\IncludeGuard;
+
+// Instantiate a new default include guard and register it
+$guard = new DefaultIncludeGuard();
+ctx_register($guard);
+// Allow a directory
+$guard->allowDirectory('/path/to/allow');
+// Deny a directory (takes precedence over allow rules)
+$guard->denyDirectory('/path/to/allow/deny');
+// Allow a file (takes precedence over any directory-level rules)
+$guard->allowFile('/path/to/allow/deny/file.php');
+// Deny a file (takes precedence over any directory-level rules)
+$guard->denyFile('/path/to/allow/file.php');
+```
+
 ## Configuration System
 
-The Context Injection library includes a powerful configuration system that allows you to manage configuration values and inject them as dependencies.
+The Context Injection library includes a powerful configuration system that allows you to manage configuration values
+and inject them as dependencies.
 
 ### Config Interface
 
@@ -171,7 +218,8 @@ interface Config
 
 ### DefaultConfig Implementation
 
-The `DefaultConfig` class is the default implementation of the `Config` interface. It provides a comprehensive configuration system with features like default values, value locators, and caching.
+The `DefaultConfig` class is the default implementation of the `Config` interface. It provides a comprehensive
+configuration system with features like default values, value locators, and caching.
 
 ```php
 namespace Joby\ContextInjection\Config;
@@ -195,11 +243,12 @@ class DefaultConfig implements Config
 ```
 
 Key features:
+
 - Default values: Fallback values for when a key isn't explicitly set
 - Explicitly set values: Values set directly using the `set` method
 - Value locators: Callbacks that can dynamically locate configuration values
-  - Global locators: Run on any key
-  - Prefix locators: Run only on keys with a specific prefix
+    - Global locators: Run on any key
+    - Prefix locators: Run only on keys with a specific prefix
 - Value caching: Caches values to improve performance
 
 ### ConfigValue Types
@@ -211,6 +260,7 @@ The configuration system supports several types of complex values through the `C
 The `InterpolatedValue` class is used to interpolate strings with configuration values.
 
 Usage example:
+
 ```php
 $config->set('app.name', 'My App');
 $config->set('welcome.message', new InterpolatedValue('Welcome to ${app.name}!'));
@@ -223,6 +273,7 @@ echo $config->get('welcome.message'); // Outputs: "Welcome to My App!"
 The `LazyValue` class is used to lazily evaluate configuration values using a callback function.
 
 Usage example:
+
 ```php
 $config->set('current.time', new LazyValue(function() {
     return date('Y-m-d H:i:s');
@@ -236,6 +287,7 @@ echo $config->get('current.time'); // Outputs the current time when accessed
 The `NullValue` class is used to explicitly represent null values in the configuration system.
 
 Usage example:
+
 ```php
 // Use NullValue when you want to explicitly set a config value to null
 $config->set('optional.setting', new NullValue());
