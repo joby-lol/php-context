@@ -1,6 +1,6 @@
 {
     "name": "joby/context",
-    "description": "A lightweight, static dependency injection container for PHP that combines simplicity with powerful features like automatic dependency resolution, callable execution with injected dependencies, and file inclusion with docblock-based dependency injection.",
+    "description": "A lightweight DI container for PHP for global, low‑config service and object registration. Use it to resolve and inject services, objects, and config values anywhere. You can execute callables with injected dependencies, instantiate objects with dependencies, and even include files using a unique DocBlock injection system.",
     "type": "library",
     "license": "MIT",
     "require": {
