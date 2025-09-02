@@ -7,6 +7,8 @@ library.
 
 - [The Context Class](#the-context-class)
 - [The Container Class](#the-container-class)
+- [IncludeGuard services](#includeguard-services)
+    - [DefaultIncludeGuard Implementation](#defaultincludeguard-implementation)
 - [Attributes](#attributes)
     - [ConfigValue Attribute](#configvalue-attribute)
     - [CategoryName Attribute](#categoryname-attribute)
