@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Context Injection: https://go.joby.lol/php-context/
+ * Context Injection: https://codeberg.org/joby/php-context
  * MIT License: Copyright (c) 2025 Joby Elliott
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
