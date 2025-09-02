@@ -32,6 +32,8 @@ use Joby\ContextInjection\Config\DefaultConfig;
 use Joby\ContextInjection\Invoker\DefaultInvoker;
 use Joby\ContextInjection\Invoker\Invoker;
 use Psr\Container\ContainerInterface;
+use Psr\SimpleCache\InvalidArgumentException;
+use ReflectionException;
 use RuntimeException;
 
 /**
@@ -77,12 +79,15 @@ class Container implements ContainerInterface
         $this->invoker = $invoker_class ? new $invoker_class($this) : new DefaultInvoker($this);
     }
 
+    /**
+     * @throws InvalidArgumentException
+     */
     public function __clone()
     {
         $this->config = clone $this->config;
         $unique_objects = [];
         foreach ($this->built as $category => $built) {
-            foreach ($built as $class => $object) {
+            foreach ($built as $object) {
                 if (!array_key_exists(spl_object_id($object), $unique_objects)) $unique_objects[spl_object_id($object)] = [clone $object, []];
                 $unique_objects[spl_object_id($object)][1][] = $category;
             }
@@ -108,6 +113,8 @@ class Container implements ContainerInterface
      * @param class-string|object $class    the class name or object to register
      * @param string              $category the category of the class, if applicable (i.e. "current" to get the current
      *                                      page for a request, etc.)
+     *
+     * @throws InvalidArgumentException
      */
     public function register(
         string|object $class,
@@ -144,6 +151,8 @@ class Container implements ContainerInterface
      *                                  page for a request, etc.)
      *
      * @return T
+     * @throws InvalidArgumentException
+     * @throws ReflectionException
      */
     public function get(string $id, string $category = 'default'): object
     {
@@ -184,11 +193,12 @@ class Container implements ContainerInterface
     /**
      * Get all the classes and interfaces that a given class inherits from or
      * implements, including itself. This is used to ensure that all classes
-     * are retreivable even if they extend the class that is being requested.
+     * are retrievable even if they extend the class that is being requested.
      *
      * @param class-string $class
      *
      * @return array<class-string>
+     * @throws InvalidArgumentException
      */
     protected function allClasses(string $class): array
     {
@@ -248,6 +258,8 @@ class Container implements ContainerInterface
      *                                  page for a request, etc.)
      *
      * @return T
+     * @throws InvalidArgumentException
+     * @throws ReflectionException
      */
     protected function instantiate(string $class, string $category): object
     {

@@ -13,9 +13,13 @@ use Joby\ContextInjection\Invoker\Invoker;
  * namespace for convenience and ease of use.
  *
  * @template T<object>
- * @param class-string<T> $class the class of object to retrieve
- * @param string $category the category of the object, if applicable (i.e. "current" to get the current page for a request, etc.)
+ * @param class-string<T> $class    the class of object to retrieve
+ * @param string          $category the category of the object, if applicable (i.e. "current" to get the current page
+ *                                  for a request, etc.)
+ *
  * @return T|null
+ * @throws ReflectionException
+ * @throws \Psr\SimpleCache\InvalidArgumentException
  */
 function ctx(string $class, string $category = 'default'): mixed
 {
@@ -32,8 +36,11 @@ function ctx(string $class, string $category = 'default'): mixed
  * requested. If an object is given, it will be saved as a built object
  * and can be retrieved directly without instantiation.
  *
- * @param class-string|object $class the class name or object to register
- * @param string $category the category of the class, if applicable (i.e. "current" to get the current page for a request, etc.)
+ * @param class-string|object $class    the class name or object to register
+ * @param string              $category the category of the class, if applicable (i.e. "current" to get the current
+ *                                      page for a request, etc.)
+ *
+ * @throws \Psr\SimpleCache\InvalidArgumentException
  */
 function ctx_register(string|object $class, string $category = "default"): void
 {
@@ -48,7 +55,10 @@ function ctx_register(string|object $class, string $category = "default"): void
  *
  * @template T of object
  * @param callable(mixed...):T $fn the callable to execute
+ *
  * @return T
+ * @throws ReflectionException
+ * @throws \Psr\SimpleCache\InvalidArgumentException
  */
 function ctx_execute(callable $fn): mixed
 {
@@ -63,6 +73,9 @@ function ctx_execute(callable $fn): mixed
  *  Core attributes are available by inserting strings that look like them on lines preceding a var tag. The
  *  actual Attribute classes need not be included, because this system just looks for strings that
  *  look like `#[CategoryName("category_name")]` or `[ConfigValue("config_key")]`.
+ *
+ * @throws ReflectionException
+ * @throws \Psr\SimpleCache\InvalidArgumentException
  */
 function ctx_include(string $file): mixed
 {

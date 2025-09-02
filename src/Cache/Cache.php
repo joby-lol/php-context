@@ -49,7 +49,7 @@ interface Cache extends CacheInterface
      * @param callable():T          $callback
      * @param int|DateInterval|null $ttl
      *
-     * @return T
+     * @return mixed of T
      *
      * @throws InvalidArgumentException MUST be thrown if the $key string is not a legal value.
      */

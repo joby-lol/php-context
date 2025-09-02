@@ -55,7 +55,7 @@ class DefaultInvoker implements Invoker
      *
      * @return T
      * @throws ReflectionException
-     * @noinspection PhpDocSignatureInspection
+     * @throws \Psr\SimpleCache\InvalidArgumentException
      */
     public function instantiate(string $class): object
     {
@@ -73,13 +73,20 @@ class DefaultInvoker implements Invoker
      * Core attributes are available by inserting strings that look like them on lines preceding a var tag. The
      * actual Attribute classes need not be included, because this system just looks for strings that
      * look like `#[CategoryName("category_name")]` or `[ConfigValue("config_key")]`.
+     *
+     * @throws \Psr\SimpleCache\InvalidArgumentException
+     * @throws ReflectionException
      */
     public function include(string $file): mixed
     {
         $key = md5_file($file);
+        /** @var array<string,ConfigPlaceholder|ObjectPlaceholder> $vars */
         $vars = $this->cache(
-            "include/$key",
-            function () use ($file): mixed {
+            "include/vars/$key",
+            /**
+             * @return array<string,ConfigPlaceholder|ObjectPlaceholder>
+             */
+            function () use ($file): array {
                 $content = file_get_contents($file);
                 if ($content === false) throw new RuntimeException("Could not read file $file.");
                 $vars = [];
@@ -140,12 +147,11 @@ class DefaultInvoker implements Invoker
                                 function (string $type) use ($content, $namespace): string {
                                     // return scalar types unchanged
                                     if (in_array($type, ['int', 'string', 'float', 'bool', 'array', 'false'])) return $type;
-                                    // make relative to namespace if type doesn't start with a slash
+                                    // make relative to namespace if the type doesn't start with a slash
+                                    $relative = true;
                                     if (str_starts_with($type, '\\')) {
                                         $relative = false;
                                         $type = substr($type, 1);
-                                    } else {
-                                        $relative = true;
                                     }
                                     // check if objects are a fully qualified class name
                                     if (!class_exists($type)) {
@@ -154,10 +160,10 @@ class DefaultInvoker implements Invoker
                                         $pattern2 = '/use\s+([^\s]+)\s+as\s+' . preg_quote($type) . '\s*;/m';
                                         if (preg_match($pattern1, $content, $m)) {
                                             $type = $m[1];
-                                            $relative = false;
+                                            // $relative = false; // commented out because relative-ness no longer actually matters
                                         } elseif (preg_match($pattern2, $content, $m)) {
                                             $type = $m[1];
-                                            $relative = false;
+                                            // $relative = false; // commented out because relative-ness no longer actually matters
                                         } else {
                                             // if this is a relative class and there is a namespace, prepend the namespace
                                             if ($relative && $namespace) {
@@ -211,6 +217,7 @@ class DefaultInvoker implements Invoker
      *
      * @return T|object
      * @throws ReflectionException
+     * @throws \Psr\SimpleCache\InvalidArgumentException
      */
     public
     function execute(callable $fn): mixed
@@ -244,6 +251,7 @@ class DefaultInvoker implements Invoker
      *
      * @return array
      * @throws ReflectionException
+     * @throws \Psr\SimpleCache\InvalidArgumentException
      */
     protected function buildFunctionArguments(callable|array $fn): array
     {
@@ -327,6 +335,13 @@ class DefaultInvoker implements Invoker
         return $args;
     }
 
+    /**
+     * @param array<ConfigPlaceholder|ObjectPlaceholder> $args
+     *
+     * @return array
+     * @throws ReflectionException
+     * @throws \Psr\SimpleCache\InvalidArgumentException
+     */
     protected function resolvePlaceholders(array $args): array
     {
         return array_map(
@@ -337,7 +352,7 @@ class DefaultInvoker implements Invoker
                         ? $this->container->config
                         : $this->container->get(Config::class, $arg->category);
                     if (!$config->has($arg->key)) {
-                        if (!$arg->is_optional) throw new RuntimeException("Config value for key {$arg->key} does not exist.");
+                        if (!$arg->is_optional) throw new RuntimeException("Config value for key $arg->key does not exist.");
                         $value = $arg->default;
                     } else {
                         $value = $config->get($arg->key);
@@ -345,11 +360,9 @@ class DefaultInvoker implements Invoker
                     // validate type
                     $this->validateConfigValueType($value, $arg->key, $arg->valid_types, $arg->allows_null);
                     return $value;
-                } elseif ($arg instanceof ObjectPlaceholder) {
-                    // arg must be an ObjectPlaceholder
-                    return $this->container->get($arg->class, $arg->category);
                 }
-                throw new RuntimeException("Unknown placeholder type.");
+                // arg must be an ObjectPlaceholder
+                return $this->container->get($arg->class, $arg->category);
             },
             $args
         );
@@ -358,6 +371,8 @@ class DefaultInvoker implements Invoker
     /**
      * Validate that a config value is of the type expected by the parameter and throw an exception
      * if it is an invalid/unexpected type.
+     *
+     * @throws \Psr\SimpleCache\InvalidArgumentException
      */
     protected function validateConfigValueType(mixed $value, string $key, array $types, bool $allowNull): void
     {

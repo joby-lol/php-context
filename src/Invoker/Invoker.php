@@ -50,15 +50,13 @@ interface Invoker
      * @param class-string<T> $class
      *
      * @return T
-     * @noinspection PhpDocSignatureInspection
      */
     public function instantiate(string $class): object;
 
     /**
-     * Execute a callable, automatically instantiating any arguments it requires
-     * from the Pixelpile context injection system. This allows for easy
-     * execution of functions and methods with dependencies, without needing to
-     * manually resolve anything.
+     * Execute a callable, automatically instantiating any arguments it requires from the context injection system.
+     * This allows for easy execution of functions and methods with dependencies, without needing to manually resolve
+     * anything.
      *
      * @template T of object
      * @param callable(mixed...):T $fn
