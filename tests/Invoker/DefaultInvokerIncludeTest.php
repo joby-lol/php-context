@@ -5,6 +5,7 @@ namespace Joby\ContextInjection\Invoker;
 use Joby\ContextInjection\Config\Config;
 use Joby\ContextInjection\Config\DefaultConfig;
 use Joby\ContextInjection\Container;
+use Joby\ContextInjection\IncludeGuard\IncludeGuard;
 use Joby\ContextInjection\TestClasses\TestClassA;
 use Joby\ContextInjection\TestClasses\TestClassB;
 use PHPUnit\Framework\TestCase;

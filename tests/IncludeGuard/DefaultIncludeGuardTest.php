@@ -1,6 +1,6 @@
 <?php
 
-namespace Joby\ContextInjection\Invoker;
+namespace Joby\ContextInjection\IncludeGuard;
 
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;

@@ -30,6 +30,7 @@ use InvalidArgumentException;
 use Joby\ContextInjection\Config\Config;
 use Joby\ContextInjection\Config\ConfigTypeException;
 use Joby\ContextInjection\Container;
+use Joby\ContextInjection\IncludeGuard\IncludeGuard;
 use ReflectionException;
 use ReflectionFunction;
 use ReflectionMethod;

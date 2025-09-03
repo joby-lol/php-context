@@ -172,10 +172,8 @@ you can allow a directory, but deny files or subdirectories within it. It also m
 allow specific files within it.
 
 ```php
-namespace Joby\ContextInjection\IncludeGuard;
-
 // Instantiate a new default include guard and register it
-$guard = new DefaultIncludeGuard();
+$guard = new Joby\ContextInjection\IncludeGuard\DefaultIncludeGuard();
 ctx_register($guard);
 // Allow a directory
 $guard->allowDirectory('/path/to/allow');

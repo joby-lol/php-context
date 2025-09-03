@@ -23,7 +23,7 @@
  * SOFTWARE.
  */
 
-namespace Joby\ContextInjection\Invoker;
+namespace Joby\ContextInjection\IncludeGuard;
 
 /**
  * Interface for classes that can be used to guard against including untrusted files. The interface is as simple as
