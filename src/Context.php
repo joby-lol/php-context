@@ -25,9 +25,6 @@
 
 namespace Joby\ContextInjection;
 
-use Psr\SimpleCache\InvalidArgumentException;
-use ReflectionException;
-
 /**
  * The main static context injector. This works similarly to a normal dependency injection container, but it is static
  * and does not require any instantiation or configuration. It is designed to be used in a static context so that it
@@ -69,13 +66,27 @@ class Context
      * @param string          $category the category of the object, if applicable (i.e. "current" to get the current
      *                                  page for a request, etc.)
      *
-     * @return T
-     * @throws InvalidArgumentException
-     * @throws ReflectionException
+     * @return object<T>
+     *
+     * @throws NotFoundException  No entry was found for **this** identifier
+     * @throws ContainerException Error while retrieving the entry
      */
-    public static function get(string $class, string $category = 'default'): mixed
+    public static function get(string $class, string $category = 'default'): object
     {
         return static::container()->get($class, $category);
+    }
+
+    /**
+     * Build a new object of the given class. It will not be cached or stored anywhere else.
+     *
+     * @template T of object
+     * @param class-string<T> $class
+     *
+     * @return object<T>
+     */
+    public static function new(string $class): object
+    {
+        return static::container()->invoker->instantiate($class);
     }
 
     /**
@@ -141,8 +152,7 @@ class Context
      * @param string              $category the category of the class, if applicable (i.e. "current" to get the current
      *                                      page for a request, etc.)
      *
-     * @throws InvalidArgumentException
-     * @throws InvalidArgumentException
+     * @throws ContainerException if an error occurs while registering the class
      */
     public static function register(string|object $class, string $category = "default"): void
     {

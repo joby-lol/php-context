@@ -1,7 +1,13 @@
 <?php
 
+use Joby\ContextInjection\ContainerException;
 use Joby\ContextInjection\Context;
+use Joby\ContextInjection\Invoker\ExecutionException;
+use Joby\ContextInjection\Invoker\InstantiationException;
 use Joby\ContextInjection\Invoker\Invoker;
+use Joby\ContextInjection\NotFoundException;
+use Psr\SimpleCache\InvalidArgumentException;
+use Joby\ContextInjection\Invoker\IncludeException;
 
 /**
  * Retrieve a service/object from the context injection system.
@@ -12,18 +18,35 @@ use Joby\ContextInjection\Invoker\Invoker;
  * This function is an alias for `Context::get()`, available in the global
  * namespace for convenience and ease of use.
  *
- * @template T<object>
+ * @template T of object
  * @param class-string<T> $class    the class of object to retrieve
  * @param string          $category the category of the object, if applicable (i.e. "current" to get the current page
  *                                  for a request, etc.)
  *
- * @return T|null
- * @throws ReflectionException
- * @throws \Psr\SimpleCache\InvalidArgumentException
+ * @return object<T>
+ *
+ * @throws NotFoundException  No entry was found for **this** identifier
+ * @throws ContainerException Error while retrieving the entry
  */
-function ctx(string $class, string $category = 'default'): mixed
+function ctx(string $class, string $category = 'default'): object
 {
     return Context::get($class, $category);
+}
+
+/**
+ * Build a new object of the given class. It will not be cached or stored anywhere else.
+ *
+ * @template T of object
+ * @param class-string<T>|T $class
+ *
+ * @return object<T>
+ *
+ * @throws InstantiationException if an error occurs while instantiating the class
+ */
+function ctx_new(string|object $class): object
+{
+    if (is_object($class)) $class = get_class($class);
+    return Context::new($class);
 }
 
 /**
@@ -40,7 +63,7 @@ function ctx(string $class, string $category = 'default'): mixed
  * @param string              $category the category of the class, if applicable (i.e. "current" to get the current
  *                                      page for a request, etc.)
  *
- * @throws \Psr\SimpleCache\InvalidArgumentException
+ * @throws ContainerException
  */
 function ctx_register(string|object $class, string $category = "default"): void
 {
@@ -57,8 +80,8 @@ function ctx_register(string|object $class, string $category = "default"): void
  * @param callable(mixed...):T $fn the callable to execute
  *
  * @return T
- * @throws ReflectionException
- * @throws \Psr\SimpleCache\InvalidArgumentException
+ *
+ * @throws ExecutionException if an error occurs while executing the callable
  */
 function ctx_execute(callable $fn): mixed
 {
@@ -79,8 +102,7 @@ function ctx_execute(callable $fn): mixed
  *  nothing at all. Generally the best practice is to return objects if you are returning anything, for unambiguous
  *  behavior. Although non-integer values are also a reasonable choice.
  *
- * @throws ReflectionException
- * @throws \Psr\SimpleCache\InvalidArgumentException
+ * @throws IncludeException if an error occurs while including the file
  */
 function ctx_include(string $file): mixed
 {

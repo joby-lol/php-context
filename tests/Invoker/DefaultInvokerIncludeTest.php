@@ -117,8 +117,7 @@ class DefaultInvokerIncludeTest extends TestCase
     public function testFileNotFound(): void
     {
         $con = new Container();
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('does not exist');
+        $this->expectException(IncludeException::class);
         $con->get(Invoker::class)->include(__DIR__ . '/include_tests/non_existent_file.php');
     }
 
@@ -132,8 +131,7 @@ class DefaultInvokerIncludeTest extends TestCase
     public function testInvalidClassType(): void
     {
         $con = new Container();
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Could not find use statement for class');
+        $this->expectException(IncludeException::class);
         $con->get(Invoker::class)->include(__DIR__ . '/include_tests/testInvalidClassType.php');
     }
 
@@ -173,8 +171,7 @@ class DefaultInvokerIncludeTest extends TestCase
     public function testNoUnionTypesForObjects(): void
     {
         $con = new Container();
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Cannot use union types for objects.');
+        $this->expectException(IncludeException::class);
         $con->invoker->include(__DIR__ . '/include_tests/testNoUnionTypesForObjects.php');
     }
 

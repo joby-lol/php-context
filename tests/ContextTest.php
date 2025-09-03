@@ -9,14 +9,6 @@ use PHPUnit\Framework\TestCase;
 class ContextTest extends TestCase
 {
     /**
-     * Reset the Context before each test to ensure a clean state.
-     */
-    protected function setUp(): void
-    {
-        Context::reset();
-    }
-
-    /**
      * Test that the reset method properly clears the stack and current container.
      */
     public function testReset(): void
@@ -37,6 +29,23 @@ class ContextTest extends TestCase
         $resetContainer = Context::container();
         $this->assertNotSame($originalContainer, $resetContainer);
         $this->assertNotSame($newContainer, $resetContainer);
+    }
+
+    /**
+     * Test that the new() method and global ctx_new() function work correctly.
+     */
+    public function testNew(): void
+    {
+        Context::reset();
+        $a = Context::new(TestClassA::class);
+        $b = ctx_new($a);
+        $c = ctx_new(TestClassA::class);
+        $this->assertInstanceOf(TestClassA::class, $a);
+        $this->assertInstanceOf(TestClassA::class, $b);
+        $this->assertInstanceOf(TestClassA::class, $c);
+        $this->assertNotSame($a, $b);
+        $this->assertNotSame($a, $c);
+        $this->assertNotSame($b, $c);
     }
 
     /**
@@ -326,5 +335,13 @@ class ContextTest extends TestCase
 
         // Verify that we're back to the root context
         $this->assertSame($rootContainer, Context::container());
+    }
+
+    /**
+     * Reset the Context before each test to ensure a clean state.
+     */
+    protected function setUp(): void
+    {
+        Context::reset();
     }
 }

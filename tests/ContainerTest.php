@@ -15,7 +15,6 @@ use Joby\ContextInjection\TestClasses\TestClassA;
 use Joby\ContextInjection\TestClasses\TestClassA1;
 use Joby\ContextInjection\TestClasses\TestClassB;
 use PHPUnit\Framework\TestCase;
-use RuntimeException;
 
 class ContainerTest extends TestCase
 {
@@ -147,16 +146,16 @@ class ContainerTest extends TestCase
         try {
             // Try to get one of the classes, which should trigger the circular dependency detection
             $con->get(CircularClassA::class);
-            $this->fail('Expected RuntimeException was not thrown');
-        } catch (RuntimeException $e) {
+            $this->fail('Expected exception was not thrown');
+        } catch (ContainerException $e) {
             // Verify the exception message contains the expected text
-            $this->assertStringContainsString('Circular dependency detected', $e->getMessage());
+            $this->assertStringContainsString('Circular dependency detected', $e->getPrevious()->getMessage());
 
             // Verify the dependency chain is included in the message
-            $this->assertStringContainsString(CircularClassA::class, $e->getMessage());
+            $this->assertStringContainsString(CircularClassA::class, $e->getPrevious()->getMessage());
 
             // The message should contain the dependency key format
-            $this->assertStringContainsString('|', $e->getMessage());
+            $this->assertStringContainsString('|', $e->getPrevious()->getMessage());
         }
     }
 }

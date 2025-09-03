@@ -52,199 +52,214 @@ class DefaultInvoker implements Invoker
 
     /**
      * Instantiate a class of the given type, resolving all its dependencies
-     * using the context injection system.
+     *  using the context injection system.
      *
      * @template T of object
      * @param class-string<T> $class
      *
-     * @return T
-     * @throws ReflectionException
-     * @throws \Psr\SimpleCache\InvalidArgumentException
+     * @return object<T>
+     *
+     * @throws InstantiationException if an error occurs while instantiating the class
      */
     public function instantiate(string $class): object
     {
-        if (!method_exists($class, '__construct')) $object = new $class;
-        else $object = new $class(...$this->buildFunctionArguments([$class, '__construct']));
+        try {
+            if (!method_exists($class, '__construct')) $object = new $class;
+            else $object = new $class(...$this->buildFunctionArguments([$class, '__construct']));
+        } catch (Throwable $th) {
+            throw new InstantiationException($class, $th);
+        }
         assert($object instanceof $class, "The instantiated object is not of type $class.");
         return $object;
     }
 
     /**
      * Include a given file, parsing for an opening docblock and resolving var tags as if they
-     * were dependencies to be loaded from the container.
+     *  were dependencies to be loaded from the container.
      *
-     * Because docblock tags don't support Attributes, their equivalents are just parsed as strings.
-     * Core attributes are available by inserting strings that look like them on lines preceding a var tag. The
-     * actual Attribute classes need not be included, because this system just looks for strings that
-     * look like `#[CategoryName("category_name")]` or `[ConfigValue("config_key")]`.
+     *  Because docblock tags don't support Attributes, their equivalents are just parsed as strings.
+     *  Core attributes are available by inserting strings that look like them on lines preceding a var tag. The
+     *  actual Attribute classes need not be included, because this system just looks for strings that
+     *  look like `#[CategoryName("category_name")]` or `[ConfigValue("config_key")]`.
      *
-     * This method will return either the output of the included file, or the value returned by it if there is one.
-     * Note that if the included script explicitly returns the integer "1" that cannot be differentiated from returning
-     * nothing at all. Generally the best practice is to return objects if you are returning anything, for unambigous
-     * behavior. Although non-integer values are also a reasonable choice.
+     *  This method will return either the output of the included file, or the value returned by it if there is one.
+     *  Note that if the included script explicitly returns the integer "1" that cannot be differentiated from returning
+     *  nothing at all. Generally the best practice is to return objects if you are returning anything, for unambiguous
+     *  behavior. Although non-integer values are also a reasonable choice.
      *
-     * @throws \Psr\SimpleCache\InvalidArgumentException
-     * @throws ReflectionException
-     * @throws IncludeException
+     * @throws IncludeException if an error occurs while including the file
      */
     public function include(string $file): mixed
     {
-        // clean up path
-        $path = realpath($file);
-        if (!$path) throw new RuntimeException("File $file does not exist.");
-        // check that file is readable
-        if (!is_readable($path)) throw new RuntimeException("File $file is not readable.");
-        // check that path is allowed to be included, if an IncludeGuard is registered
-        if (false === $this->includeGuard()?->check($path)) throw new RuntimeException("File $file is not allowed to be included.");
-        // cache further operations
-        $key = md5_file($path);
-        /** @var array<string,ConfigPlaceholder|ObjectPlaceholder> $vars */
-        $vars = $this->cache(
-            "include/vars/$key",
-            /**
-             * @return array<string,ConfigPlaceholder|ObjectPlaceholder>
-             */
-            function () use ($path): array {
-                $content = file_get_contents($path);
-                if ($content === false) throw new RuntimeException("Could not read file");
-                $vars = [];
-                $namespace = null;
-                // look for a namespace declaration
-                if (preg_match('/^namespace\s+([^;]+);/m', $content, $matches)) {
-                    $namespace = $matches[1];
-                    $namespace = trim($namespace, '\\');
-                }
-                // parse the first docblock at the start of the file
-                if (preg_match('/\/\*\*(.*?)\*\//s', $content, $matches)) {
-                    // parse the docblock itself
-                    $docblock = $matches[1];
-                    $lines = preg_split('/\r?\n/', $docblock);
-                    $lines = array_map(function ($line) {
-                        return trim(preg_replace('/^\s*\*\s*/', '', $line));
-                    }, $lines);
-                    $currentCategory = null;
-                    $currentConfigKey = null;
-                    foreach ($lines as $line) {
-                        if (!$line) continue;
-                        // check for category attribute with double quotes
-                        if (preg_match('/#\[CategoryName\("([^"]+)"\)]/', $line, $matches)) {
-                            $currentCategory = $matches[1];
-                            continue;
-                        }
-                        // check for category attribute with single quotes
-                        if (preg_match('/#\[CategoryName\(\'([^\']+)\'\)]/', $line, $matches)) {
-                            $currentCategory = $matches[1];
-                            continue;
-                        }
-                        // check for config value attribute with double quotes
-                        if (preg_match('/#\[ConfigValue\("([^"]+)"\)]/', $line, $matches)) {
-                            $currentConfigKey = $matches[1];
-                            continue;
-                        }
-                        // check for config value attribute with single quotes
-                        if (preg_match('/#\[ConfigValue\(\'([^\']+)\'\)]/', $line, $matches)) {
-                            $currentConfigKey = $matches[1];
-                            continue;
-                        }
-                        // parse @var declarations
-                        if (preg_match('/@var\s+([^\s]+)\s+\$([^\s]+)/', $line, $matches)) {
-                            $allowNull = false;
-                            $type = $matches[1];
-                            if (str_starts_with($type, '?')) {
-                                $allowNull = true;
-                                $type = substr($type, 1);
-                            } elseif (str_starts_with($type, 'null|')) {
-                                $allowNull = true;
-                                $type = substr($type, 5);
-                            } elseif (str_ends_with($type, '|null')) {
-                                $allowNull = true;
-                                $type = substr($type, 0, -5);
+        try {
+            // clean up path
+            $path = realpath($file);
+            if (!$path) throw new RuntimeException("File $file does not exist.");
+            // check that file is readable
+            if (!is_readable($path)) throw new RuntimeException("File $file is not readable.");
+            // check that path is allowed to be included, if an IncludeGuard is registered
+            if (false === $this->includeGuard()?->check($path)) throw new RuntimeException("File $file is not allowed to be included.");
+            // cache further operations
+            $key = md5_file($path);
+            /** @var array<string,ConfigPlaceholder|ObjectPlaceholder> $vars */
+            $vars = $this->cache(
+                "include/vars/$key",
+                /**
+                 * @return array<string,ConfigPlaceholder|ObjectPlaceholder>
+                 */
+                function () use ($path): array {
+                    $content = file_get_contents($path);
+                    if ($content === false) throw new RuntimeException("Could not read file");
+                    $vars = [];
+                    $namespace = null;
+                    // look for a namespace declaration
+                    if (preg_match('/^namespace\s+([^;]+);/m', $content, $matches)) {
+                        $namespace = $matches[1];
+                        $namespace = trim($namespace, '\\');
+                    }
+                    // parse the first docblock at the start of the file
+                    if (preg_match('/\/\*\*(.*?)\*\//s', $content, $matches)) {
+                        // parse the docblock itself
+                        $docblock = $matches[1];
+                        $lines = preg_split('/\r?\n/', $docblock);
+                        $lines = array_map(function ($line) {
+                            return trim(preg_replace('/^\s*\*\s*/', '', $line));
+                        }, $lines);
+                        $currentCategory = null;
+                        $currentConfigKey = null;
+                        foreach ($lines as $line) {
+                            if (!$line) continue;
+                            // check for category attribute with double quotes
+                            if (preg_match('/#\[CategoryName\("([^"]+)"\)]/', $line, $matches)) {
+                                $currentCategory = $matches[1];
+                                continue;
                             }
-                            $types = explode('|', $type);
-                            $types = array_map(
-                                function (string $type) use ($content, $namespace): string {
-                                    // return scalar types unchanged
-                                    if (in_array($type, ['int', 'string', 'float', 'bool', 'array', 'false'])) return $type;
-                                    // make relative to namespace if the type doesn't start with a slash
-                                    $relative = true;
-                                    if (str_starts_with($type, '\\')) {
-                                        $relative = false;
-                                        $type = substr($type, 1);
-                                    }
-                                    // check if objects are a fully qualified class name
-                                    if (!class_exists($type)) {
-                                        // search the whole file for a use statement ending with this class name
-                                        $pattern1 = '/use\s+([^;]+\\\\' . preg_quote($type) . ')\s*;/m';
-                                        $pattern2 = '/use\s+([^\s]+)\s+as\s+' . preg_quote($type) . '\s*;/m';
-                                        if (preg_match($pattern1, $content, $m)) {
-                                            $type = $m[1];
-                                            // $relative = false; // commented out because relative-ness no longer actually matters
-                                        } elseif (preg_match($pattern2, $content, $m)) {
-                                            $type = $m[1];
-                                            // $relative = false; // commented out because relative-ness no longer actually matters
-                                        } else {
-                                            // if this is a relative class and there is a namespace, prepend the namespace
-                                            if ($relative && $namespace) {
-                                                $class = $namespace . '\\' . $type;
-                                                if (class_exists($class)) {
-                                                    return $class;
-                                                }
-                                            }
-                                            throw new RuntimeException("Could not find use statement for class $type.");
-                                        }
-                                    }
-                                    // return parsed type
-                                    return $type;
-                                },
-                                $types
-                            );
-                            // build value
-                            sort($types);
-                            $varName = $matches[2];
-                            if ($currentConfigKey) {
-                                // this variable is a config value
-                                $vars[$varName] = new ConfigPlaceholder(
-                                    $currentConfigKey,
-                                    $types,
-                                    false,
-                                    null,
-                                    $allowNull,
-                                    $currentCategory ?? 'default'
-                                );
-                            } else {
-                                // this variable is an object
-                                if (count($types) > 1) {
-                                    throw new RuntimeException("Cannot use union types for objects.");
+                            // check for category attribute with single quotes
+                            if (preg_match('/#\[CategoryName\(\'([^\']+)\'\)]/', $line, $matches)) {
+                                $currentCategory = $matches[1];
+                                continue;
+                            }
+                            // check for config value attribute with double quotes
+                            if (preg_match('/#\[ConfigValue\("([^"]+)"\)]/', $line, $matches)) {
+                                $currentConfigKey = $matches[1];
+                                continue;
+                            }
+                            // check for config value attribute with single quotes
+                            if (preg_match('/#\[ConfigValue\(\'([^\']+)\'\)]/', $line, $matches)) {
+                                $currentConfigKey = $matches[1];
+                                continue;
+                            }
+                            // parse @var declarations
+                            if (preg_match('/@var\s+([^\s]+)\s+\$([^\s]+)/', $line, $matches)) {
+                                $allowNull = false;
+                                $type = $matches[1];
+                                if (str_starts_with($type, '?')) {
+                                    $allowNull = true;
+                                    $type = substr($type, 1);
+                                } elseif (str_starts_with($type, 'null|')) {
+                                    $allowNull = true;
+                                    $type = substr($type, 5);
+                                } elseif (str_ends_with($type, '|null')) {
+                                    $allowNull = true;
+                                    $type = substr($type, 0, -5);
                                 }
-                                $type = reset($types);
-                                $vars[$varName] = new ObjectPlaceholder($type, $currentCategory ?? 'default');
+                                $types = explode('|', $type);
+                                $types = array_map(
+                                    function (string $type) use ($content, $namespace): string {
+                                        // return scalar types unchanged
+                                        if (in_array($type, ['int', 'string', 'float', 'bool', 'array', 'false'])) return $type;
+                                        // make relative to namespace if the type doesn't start with a slash
+                                        $relative = true;
+                                        if (str_starts_with($type, '\\')) {
+                                            $relative = false;
+                                            $type = substr($type, 1);
+                                        }
+                                        // check if objects are a fully qualified class name
+                                        if (!class_exists($type)) {
+                                            // search the whole file for a use statement ending with this class name
+                                            $pattern1 = '/use\s+([^;]+\\\\' . preg_quote($type) . ')\s*;/m';
+                                            $pattern2 = '/use\s+([^\s]+)\s+as\s+' . preg_quote($type) . '\s*;/m';
+                                            if (preg_match($pattern1, $content, $m)) {
+                                                $type = $m[1];
+                                                // $relative = false; // commented out because relative-ness no longer actually matters
+                                            } elseif (preg_match($pattern2, $content, $m)) {
+                                                $type = $m[1];
+                                                // $relative = false; // commented out because relative-ness no longer actually matters
+                                            } else {
+                                                // if this is a relative class and there is a namespace, prepend the namespace
+                                                if ($relative && $namespace) {
+                                                    $class = $namespace . '\\' . $type;
+                                                    if (class_exists($class)) {
+                                                        return $class;
+                                                    }
+                                                }
+                                                throw new RuntimeException("Could not find use statement for class $type.");
+                                            }
+                                        }
+                                        // return parsed type
+                                        return $type;
+                                    },
+                                    $types
+                                );
+                                // build value
+                                sort($types);
+                                $varName = $matches[2];
+                                if ($currentConfigKey) {
+                                    // this variable is a config value
+                                    $vars[$varName] = new ConfigPlaceholder(
+                                        $currentConfigKey,
+                                        $types,
+                                        false,
+                                        null,
+                                        $allowNull,
+                                        $currentCategory ?? 'default'
+                                    );
+                                } else {
+                                    // this variable is an object
+                                    if (count($types) > 1) {
+                                        throw new RuntimeException("Cannot use union types for objects.");
+                                    }
+                                    $type = reset($types);
+                                    $vars[$varName] = new ObjectPlaceholder($type, $currentCategory ?? 'default');
+                                }
                             }
                         }
                     }
+                    return $vars;
                 }
-                return $vars;
-            }
-        );
-        // extract variables into scope, include the file and return its output
-        return include_isolated($path, $this->resolvePlaceholders($vars));
+            );
+            // extract variables into scope, include the file and return its output
+            return include_isolated($path, $this->resolvePlaceholders($vars));
+        } catch (IncludeException $e) {
+            throw $e;
+        } catch (Throwable $th) {
+            throw new IncludeException($file, $th, '');
+        }
     }
 
     /**
-     * @template T of object
+     * Execute a callable, automatically instantiating any arguments it requires from the context injection system.
+     *  This allows for easy execution of functions and methods with dependencies, without needing to manually resolve
+     *  anything.
+     *
+     * @template T of mixed
      * @param callable(mixed...):T $fn
      *
-     * @return T|object
-     * @throws ReflectionException
-     * @throws \Psr\SimpleCache\InvalidArgumentException
+     * @return T
+     *
+     * @throws ExecutionException if an error occurs while executing the callable
      */
-    public
-    function execute(callable $fn): mixed
+    public function execute(callable $fn): mixed
     {
-        assert(is_string($fn) || $fn instanceof Closure, 'The provided callable must be a string or a Closure.');
-        $reflection = new ReflectionFunction($fn);
-        // call with built arguments and return result
-        // @phpstan-ignore-next-line this will always return the return type of the passed callable
-        return $reflection->invokeArgs($this->buildFunctionArguments($fn));
+        try {
+            assert(is_string($fn) || $fn instanceof Closure, 'The provided callable must be a string or a Closure.');
+            $reflection = new ReflectionFunction($fn);
+            // call with built arguments and return result
+            // @phpstan-ignore-next-line this will always return the return type of the passed callable
+            return $reflection->invokeArgs($this->buildFunctionArguments($fn));
+        } catch (Throwable $th) {
+            throw new ExecutionException($th);
+        }
     }
 
     protected function includeGuard(): IncludeGuard|null
@@ -368,7 +383,6 @@ class DefaultInvoker implements Invoker
      * @param array<ConfigPlaceholder|ObjectPlaceholder> $args
      *
      * @return array
-     * @throws ReflectionException
      * @throws \Psr\SimpleCache\InvalidArgumentException
      */
     protected function resolvePlaceholders(array $args): array

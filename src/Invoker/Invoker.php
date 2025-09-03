@@ -49,7 +49,9 @@ interface Invoker
      * @template T of object
      * @param class-string<T> $class
      *
-     * @return T
+     * @return object<T>
+     *
+     * @throws InstantiationException if an error occurs while instantiating the class
      */
     public function instantiate(string $class): object;
 
@@ -58,10 +60,12 @@ interface Invoker
      * This allows for easy execution of functions and methods with dependencies, without needing to manually resolve
      * anything.
      *
-     * @template T of object
+     * @template T of mixed
      * @param callable(mixed...):T $fn
      *
      * @return T
+     *
+     * @throws ExecutionException if an error occurs while executing the callable
      */
     public function execute(callable $fn): mixed;
 
@@ -73,6 +77,13 @@ interface Invoker
      * Core attributes are available by inserting strings that look like them on lines preceding a var tag. The
      * actual Attribute classes need not be included, because this system just looks for strings that
      * look like `#[CategoryName("category_name")]` or `[ConfigValue("config_key")]`.
+     *
+     * This method will return either the output of the included file, or the value returned by it if there is one.
+     * Note that if the included script explicitly returns the integer "1" that cannot be differentiated from returning
+     * nothing at all. Generally the best practice is to return objects if you are returning anything, for unambiguous
+     * behavior. Although non-integer values are also a reasonable choice.
+     *
+     * @throws IncludeException if an error occurs while including the file
      */
     public function include(string $file): mixed;
 }

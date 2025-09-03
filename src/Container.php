@@ -33,8 +33,8 @@ use Joby\ContextInjection\Invoker\DefaultInvoker;
 use Joby\ContextInjection\Invoker\Invoker;
 use Psr\Container\ContainerInterface;
 use Psr\SimpleCache\InvalidArgumentException;
-use ReflectionException;
 use RuntimeException;
+use Throwable;
 
 /**
  * A container implementation that provides dependency injection and object management functionalities. This container
@@ -79,9 +79,6 @@ class Container implements ContainerInterface
         $this->invoker = $invoker_class ? new $invoker_class($this) : new DefaultInvoker($this);
     }
 
-    /**
-     * @throws InvalidArgumentException
-     */
     public function __clone()
     {
         $this->config = clone $this->config;
@@ -114,7 +111,7 @@ class Container implements ContainerInterface
      * @param string              $category the category of the class, if applicable (i.e. "current" to get the current
      *                                      page for a request, etc.)
      *
-     * @throws InvalidArgumentException
+     * @throws ContainerException if an error occurs while registering the class
      */
     public function register(
         string|object $class,
@@ -128,7 +125,11 @@ class Container implements ContainerInterface
             assert(class_exists($class), "The class $class does not exist.");
         }
         // get all parent classes of the registered class
-        $all_classes = $this->allClasses($class);
+        try {
+            $all_classes = $this->allClasses($class);
+        } catch (Throwable $th) {
+            throw new ContainerException('Error retrieving all classes for class ' . $class . ': ' . $th->getMessage(), previous: $th);
+        }
         // save all classes under the class name alias list
         foreach ($all_classes as $alias_class) {
             $this->classes[$category][$alias_class] = $class;
@@ -150,9 +151,10 @@ class Container implements ContainerInterface
      * @param string          $category the category of the object, if applicable (i.e. "current" to get the current
      *                                  page for a request, etc.)
      *
-     * @return T
-     * @throws InvalidArgumentException
-     * @throws ReflectionException
+     * @return object<T>
+     *
+     * @throws ContainerException Error while retrieving the entry
+     * @throws NotFoundException  No entry was found for **this** identifier
      */
     public function get(string $id, string $category = 'default'): object
     {
@@ -249,8 +251,7 @@ class Container implements ContainerInterface
 
     /**
      * Instantiate the given class if it has not been instantiated yet. Returns
-     * the built object when finished. Returns null if the given class is not
-     * registered under the given category.
+     * the built object when finished.
      *
      * @template T of object
      * @param class-string<T> $class    the class of object to instantiate
@@ -258,14 +259,15 @@ class Container implements ContainerInterface
      *                                  page for a request, etc.)
      *
      * @return T
-     * @throws InvalidArgumentException
-     * @throws ReflectionException
+     *
+     * @throws ContainerException Error while instantiating
+     * @throws NotFoundException No entry found for **this** identifier
      */
     protected function instantiate(string $class, string $category): object
     {
         // if the class is not registered, return null
         if (!isset($this->classes[$category][$class])) {
-            throw new RuntimeException(
+            throw new ContainerException(
                 "The class $class is not registered in the context under category $category. " .
                 "Did you forget to call " . get_called_class() . "::register() to register it?"
             );
@@ -283,9 +285,17 @@ class Container implements ContainerInterface
         // Mark this class as currently being instantiated
         $this->instantiating[$dependency_key] = true;
         // instantiate the class and save it under the built objects
-        $built = $this->get(Invoker::class)->instantiate($actual_class);
+        try {
+            $built = $this->get(Invoker::class)->instantiate($actual_class);
+        } catch (Throwable $th) {
+            throw new ContainerException('Error instantiating class ' . $class . ': ' . $th->getMessage(), previous: $th);
+        }
         // save the built object under all parent classes and interfaces
-        $all_classes = $this->allClasses($built::class);
+        try {
+            $all_classes = $this->allClasses($actual_class);
+        } catch (Throwable $th) {
+            throw new ContainerException('Error retrieving all classes for class ' . $class . ': ' . $th->getMessage(), previous: $th);
+        }
         foreach ($all_classes as $alias_class) {
             $this->built[$category][$alias_class] = $built;
         }
