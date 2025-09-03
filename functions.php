@@ -3,11 +3,10 @@
 use Joby\ContextInjection\ContainerException;
 use Joby\ContextInjection\Context;
 use Joby\ContextInjection\Invoker\ExecutionException;
+use Joby\ContextInjection\Invoker\IncludeException;
 use Joby\ContextInjection\Invoker\InstantiationException;
 use Joby\ContextInjection\Invoker\Invoker;
 use Joby\ContextInjection\NotFoundException;
-use Psr\SimpleCache\InvalidArgumentException;
-use Joby\ContextInjection\Invoker\IncludeException;
 
 /**
  * Retrieve a service/object from the context injection system.
