@@ -56,6 +56,20 @@ $userService = ctx(UserService::class);
 $currentUser = ctx(User::class, 'current');
 ```
 
+### Instantiating transient objects with Dependency Injection
+
+```php
+// Define a class with type-hinted dependencies
+// Important: ctx_new will throw an exception if it can't resolve *everything* for the constructor
+class SomeParserOrSomething {
+    public function __construct(protected Logger $logger) {
+    }
+}
+
+// Instantiate a transient object that is not saved in the container
+$parser = ctx_new(SomeParserOrSomething::class);
+```
+
 ### Executing Callables with Dependency Injection
 
 ```php

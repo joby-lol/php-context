@@ -1,17 +1,17 @@
 <?php
 
-namespace Joby\ContextInjection\IncludeGuard;
+namespace Joby\ContextInjection\PathGuard;
 
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 
-class DefaultIncludeGuardTest extends TestCase
+class PathGuardTraitTest extends TestCase
 {
     private string $baseDir;
 
     public function testCheckReturnsFalseForNonExistentFile(): void
     {
-        $guard = new DefaultIncludeGuard();
+        $guard = new PathGuardTraitHarness();
         $this->assertFalse($guard->check($this->baseDir . DIRECTORY_SEPARATOR . 'does_not_exist.php'));
     }
 
@@ -20,7 +20,7 @@ class DefaultIncludeGuardTest extends TestCase
         $sub = $this->mkdir($this->baseDir . DIRECTORY_SEPARATOR . 'allowedDir');
         $file = $this->touch($sub . DIRECTORY_SEPARATOR . 'file1.php');
 
-        $guard = new DefaultIncludeGuard();
+        $guard = new PathGuardTraitHarness();
         $guard->allowDirectory($sub);
 
         $this->assertTrue($guard->check($file));
@@ -31,7 +31,7 @@ class DefaultIncludeGuardTest extends TestCase
         $sub = $this->mkdir($this->baseDir . DIRECTORY_SEPARATOR . 'deniedDir');
         $file = $this->touch($sub . DIRECTORY_SEPARATOR . 'file1.php');
 
-        $guard = new DefaultIncludeGuard();
+        $guard = new PathGuardTraitHarness();
         $guard->denyDirectory($sub);
 
         $this->assertFalse($guard->check($file));
@@ -42,7 +42,7 @@ class DefaultIncludeGuardTest extends TestCase
         $sub = $this->mkdir($this->baseDir . DIRECTORY_SEPARATOR . 'mixDir');
         $file = $this->touch($sub . DIRECTORY_SEPARATOR . 'file1.php');
 
-        $guard = new DefaultIncludeGuard();
+        $guard = new PathGuardTraitHarness();
         $guard->allowDirectory($sub);
         $guard->denyFile($file);
 
@@ -55,7 +55,7 @@ class DefaultIncludeGuardTest extends TestCase
         $sub = $this->mkdir($this->baseDir . DIRECTORY_SEPARATOR . 'mixDir2');
         $file = $this->touch($sub . DIRECTORY_SEPARATOR . 'file1.php');
 
-        $guard = new DefaultIncludeGuard();
+        $guard = new PathGuardTraitHarness();
         $guard->denyDirectory($sub);
         $guard->allowFile($file);
 
@@ -68,7 +68,7 @@ class DefaultIncludeGuardTest extends TestCase
         $sub = $this->mkdir($this->baseDir . DIRECTORY_SEPARATOR . 'toggleDir1');
         $file = $this->touch($sub . DIRECTORY_SEPARATOR . 'file.php');
 
-        $guard = new DefaultIncludeGuard();
+        $guard = new PathGuardTraitHarness();
         $guard->allowDirectory($sub);
         // Now reverse: deny the same directory. This should remove it from allowed.
         $guard->denyDirectory($sub);
@@ -81,7 +81,7 @@ class DefaultIncludeGuardTest extends TestCase
         $sub = $this->mkdir($this->baseDir . DIRECTORY_SEPARATOR . 'toggleDir2');
         $file = $this->touch($sub . DIRECTORY_SEPARATOR . 'file.php');
 
-        $guard = new DefaultIncludeGuard();
+        $guard = new PathGuardTraitHarness();
         $guard->denyDirectory($sub);
         // Now allow the same directory. This should remove it from denied.
         $guard->allowDirectory($sub);
@@ -93,7 +93,7 @@ class DefaultIncludeGuardTest extends TestCase
     {
         $file = $this->touch($this->baseDir . DIRECTORY_SEPARATOR . 'flipFile1.php');
 
-        $guard = new DefaultIncludeGuard();
+        $guard = new PathGuardTraitHarness();
         $guard->allowFile($file);
         $this->assertTrue($guard->check($file));
 
@@ -105,7 +105,7 @@ class DefaultIncludeGuardTest extends TestCase
     {
         $file = $this->touch($this->baseDir . DIRECTORY_SEPARATOR . 'flipFile2.php');
 
-        $guard = new DefaultIncludeGuard();
+        $guard = new PathGuardTraitHarness();
         $guard->denyFile($file);
         $this->assertFalse($guard->check($file));
 
@@ -115,7 +115,7 @@ class DefaultIncludeGuardTest extends TestCase
 
     public function testAllowDirectoryWithInvalidPathThrows(): void
     {
-        $guard = new DefaultIncludeGuard();
+        $guard = new PathGuardTraitHarness();
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Invalid directory');
@@ -124,7 +124,7 @@ class DefaultIncludeGuardTest extends TestCase
 
     public function testDenyDirectoryWithInvalidPathThrows(): void
     {
-        $guard = new DefaultIncludeGuard();
+        $guard = new PathGuardTraitHarness();
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Invalid directory');
@@ -135,7 +135,7 @@ class DefaultIncludeGuardTest extends TestCase
     {
         $file = $this->touch($this->baseDir . DIRECTORY_SEPARATOR . 'not_a_dir.php');
 
-        $guard = new DefaultIncludeGuard();
+        $guard = new PathGuardTraitHarness();
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Directory does not exist');
@@ -146,7 +146,7 @@ class DefaultIncludeGuardTest extends TestCase
     {
         $file = $this->touch($this->baseDir . DIRECTORY_SEPARATOR . 'not_a_dir2.php');
 
-        $guard = new DefaultIncludeGuard();
+        $guard = new PathGuardTraitHarness();
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Directory does not exist');
@@ -155,7 +155,7 @@ class DefaultIncludeGuardTest extends TestCase
 
     public function testAllowFileWithInvalidPathThrows(): void
     {
-        $guard = new DefaultIncludeGuard();
+        $guard = new PathGuardTraitHarness();
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Invalid file');
@@ -164,7 +164,7 @@ class DefaultIncludeGuardTest extends TestCase
 
     public function testDenyFileWithInvalidPathThrows(): void
     {
-        $guard = new DefaultIncludeGuard();
+        $guard = new PathGuardTraitHarness();
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Invalid file');
@@ -181,7 +181,7 @@ class DefaultIncludeGuardTest extends TestCase
         $otherDir = $this->mkdir($this->baseDir . DIRECTORY_SEPARATOR . 'dirB');
         $otherFile = $this->touch($otherDir . DIRECTORY_SEPARATOR . 'b.php');
 
-        $guard = new DefaultIncludeGuard();
+        $guard = new PathGuardTraitHarness();
         $guard->allowDirectory($allowedDir);
 
         $this->assertTrue($guard->check($allowedFile));
@@ -191,7 +191,7 @@ class DefaultIncludeGuardTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->baseDir = sys_get_temp_dir().DIRECTORY_SEPARATOR . 'include_guard_tests_'.uniqid();
+        $this->baseDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'include_guard_tests_' . uniqid();
         $this->mkdir($this->baseDir);
     }
 

@@ -23,16 +23,14 @@
  * SOFTWARE.
  */
 
-namespace Joby\ContextInjection\IncludeGuard;
+namespace Joby\ContextInjection\PathGuard;
 
 /**
- * Interface for classes that can be used to guard against including untrusted files. The interface is as simple as
- * possible, so that it can be used in a variety of contexts.
- *
- * Implementations should convert the filename to a real path, and then check that somehow. Generally this will be by
- * matching the path against a set of allowed prefixes.
+ * Generic implementation of the PathGuard interface, intended to be used for transient or other more specific uses in
+ * which ReadGuard, WriteGuard, and IncludeGuard are not quite appropriate, or anywhere you might need a custom
+ * PathGuard tool that is configured differently than the default ones.
  */
-interface IncludeGuard
+class GenericPathGuard implements PathGuard
 {
-    public function check(string $filename): bool;
+    use PathGuardTrait;
 }

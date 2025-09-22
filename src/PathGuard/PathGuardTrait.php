@@ -1,16 +1,37 @@
 <?php
 
-namespace Joby\ContextInjection\IncludeGuard;
+namespace Joby\ContextInjection\PathGuard;
+
+/**
+ * Context Injection: https://codeberg.org/joby/php-context
+ * MIT License: Copyright (c) 2025 Joby Elliott
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 
 use InvalidArgumentException;
 
 /**
- * Default include guard implementation. Does basic checks to allow and deny includes by directory or full directory.
- * File rules take precedence over directory rules, and after that deny rules take precedence over allow rules. This
- * means that you can allow a directory, but deny files or subdirectories within it. It also means that you can deny a
- * directory, but allow specific files within it.
+ * Default implementation of the PathGuard interface. Implemented as a trait so that it can be used by multiple classes
+ * that do not inherit from each other.
  */
-class DefaultIncludeGuard implements IncludeGuard
+trait PathGuardTrait
 {
     protected array $allowed_directories = [];
     protected array $denied_directories = [];

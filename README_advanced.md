@@ -7,19 +7,16 @@ library.
 
 - [The Context Class](#the-context-class)
 - [The Container Class](#the-container-class)
-- [IncludeGuard services](#includeguard-services)
-    - [DefaultIncludeGuard Implementation](#defaultincludeguard-implementation)
 - [Attributes](#attributes)
     - [ConfigValue Attribute](#configvalue-attribute)
     - [CategoryName Attribute](#categoryname-attribute)
+- [PathGuard services](#pathguard-services)
+    - [DefaultIncludeGuard Implementation](#defaultincludeguard-implementation)
 - [Configuration System](#configuration-system)
     - [Config Interface](#config-interface)
     - [DefaultConfig Implementation](#defaultconfig-implementation)
     - [ConfigValue Types](#configvalue-types)
-        - [InterpolatedValue](#interpolatedvalue)
-        - [LazyValue](#lazyvalue)
-        - [NullValue](#nullvalue)
-    - [Advanced Configuration Features](#advanced-configuration-features)
+  - [Advanced Configuration Features](#advanced-configuration-features)
 
 ## The Context Class
 
@@ -152,15 +149,16 @@ ctx_register($currentUser, 'current');
 ctx_execute('processUser');
 ```
 
-## IncludeGuard services
+## PathGuard services
 
-The Context Injection library provides an `IncludeGuard` interface that can be used to check whether a given file is
-allowed to be included. By default, this is used in the `Invoker` as a mechanism for preventing the inclusion of
-untrusted files. The interface is a single `check($filename)` method that returns a boolean indicating whether the file
-is allowed to be included. You can implement your own `IncludeGuard` service to customize the behavior, or you can use
-the `DefaultIncludeGuard` service that provides simple allow/deny lists of allowed files and/or folders.
+The Context Injection library provides a `PathGuard` interface that can be used to check whether a given file is
+allowed to be used for various purposes. By default, this is used in the `Invoker` under the name `IncludeGuard` as a
+mechanism for preventing the inclusion of untrusted files. The interface is a single `check($filename)` method that
+returns a boolean indicating whether the file is allowed to be used. You can implement your own `PathGuard` services
+to customize the behavior, or you can use the `DefaultReadGuard`, `DefaultWriteGuard` and `DefaultIncludeGuard`
+that provide basic management by allowing/denying directories and full path names.
 
-The `IncludeGuard` interface is intended as a general-purpose mechanism for preventing untrusted code from being
+The `PathGuard` interface is intended as a general-purpose mechanism for preventing untrusted code from being
 included, and may also be used by other services if they need to check whether a file is allowed to be
 included/executed.
 
@@ -173,7 +171,7 @@ allow specific files within it.
 
 ```php
 // Instantiate a new default include guard and register it
-$guard = new Joby\ContextInjection\IncludeGuard\DefaultIncludeGuard();
+$guard = new Joby\ContextInjection\PathGuard\DefaultIncludeGuard();
 ctx_register($guard);
 // Allow a directory
 $guard->allowDirectory('/path/to/allow');

@@ -30,6 +30,16 @@ class DefaultInvokerTest extends TestCase
         );
     }
 
+    public function testExecutionFromString(): void
+    {
+        $con = new Container();
+        $inv = new DefaultInvoker($con);
+        $this->assertEquals(
+            'Hello, world!',
+            $inv->execute('Joby\ContextInjection\Invoker\testFunction')
+        );
+    }
+
     public function testEmptyExecution(): void
     {
         $con = new Container();
@@ -351,8 +361,6 @@ class DefaultInvokerTest extends TestCase
         });
         $this->assertEquals(42, $result);
     }
-
-
 }
 
 function testFunction(): string
