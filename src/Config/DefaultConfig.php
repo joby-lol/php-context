@@ -73,13 +73,20 @@ class DefaultConfig implements Config
      */
     protected array $prefix_locators = [];
 
+    /**
+     * 
+     * @param array<string,mixed> $defaults 
+     * @param array<string,mixed> $values 
+     * @param array<callable(string):mixed> $global_locators 
+     * @param array<string,array<callable(string):mixed>> $prefix_locators 
+     * @return void 
+     */
     public function __construct(
         array $defaults = [],
         array $values = [],
         array $global_locators = [],
         array $prefix_locators = [],
-    )
-    {
+    ) {
         $this->defaults = $defaults;
         $this->values = $values;
         $this->global_locators = $global_locators;
@@ -121,7 +128,8 @@ class DefaultConfig implements Config
                 throw new ConfigTypeException("Config key '$key' is not a scalar value, and cannot be interpolated.");
             }
             return (string)$replacement;
-        }, $value);
+        }, $value)
+            ?? throw new ConfigException("Error during interpolation of value '$value'.");
     }
 
     public function has(string $key): bool
@@ -185,5 +193,4 @@ class DefaultConfig implements Config
         }
         return $value;
     }
-
 }

@@ -49,7 +49,7 @@ interface Invoker
      * @template T of object
      * @param class-string<T> $class
      *
-     * @return object<T>
+     * @return T
      *
      * @throws InstantiationException if an error occurs while instantiating the class
      */

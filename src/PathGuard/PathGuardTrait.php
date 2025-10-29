@@ -33,9 +33,13 @@ use InvalidArgumentException;
  */
 trait PathGuardTrait
 {
+    /** @var array<string> $allowed_directories */
     protected array $allowed_directories = [];
+    /** @var array<string> $denied_directories */
     protected array $denied_directories = [];
+    /** @var array<string> $allowed_files */
     protected array $allowed_files = [];
+    /** @var array<string> $denied_files */
     protected array $denied_files = [];
 
     public function check(string $filename): bool

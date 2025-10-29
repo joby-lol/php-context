@@ -26,10 +26,12 @@
 namespace Joby\ContextInjection\Cache\Backends;
 
 use DateInterval;
+use Psr\SimpleCache\InvalidArgumentException;
 
 abstract class AbstractCacheBackend implements CacheBackend
 {
     protected int $default_ttl;
+    /** @var positive-int|null */
     protected ?int $current_time = null;
 
     public function __construct(int $default_ttl = 3600)
@@ -46,6 +48,10 @@ abstract class AbstractCacheBackend implements CacheBackend
         return $result;
     }
 
+    /**
+     * @param iterable<string,mixed> $values 
+     * @throws InvalidArgumentException 
+     */
     public function setMultiple(iterable $values, DateInterval|int|null $ttl = null): bool
     {
         foreach ($values as $key => $value) {
@@ -64,6 +70,7 @@ abstract class AbstractCacheBackend implements CacheBackend
 
     /**
      * For testing purposes - allows setting the current time
+     * @param positive-int|null $time
      */
     public function setCurrentTime(int|null $time): void
     {
@@ -72,6 +79,7 @@ abstract class AbstractCacheBackend implements CacheBackend
 
     /**
      * Get the current timestamp, either real or simulated
+     * @return positive-int
      */
     protected function getCurrentTime(): int
     {

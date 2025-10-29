@@ -49,7 +49,7 @@ interface Cache extends CacheInterface
      * @param callable():T          $callback
      * @param int|DateInterval|null $ttl
      *
-     * @return mixed of T
+     * @return T
      *
      * @throws InvalidArgumentException MUST be thrown if the $key string is not a legal value.
      */
@@ -117,8 +117,8 @@ interface Cache extends CacheInterface
     /**
      * Persists a set of key => value pairs in the cache, with an optional TTL.
      *
-     * @param iterable              $values  A list of key => value pairs for a multiple-set operation.
-     * @param null|int|DateInterval $ttl     Optional. The TTL value of this item. If no value is sent and
+     * @param iterable<string,mixed>              $values  A list of key => value pairs for a multiple-set operation.
+     * @param null|positive-int|DateInterval $ttl     Optional. The TTL value of this item. If no value is sent and
      *                                       the driver supports TTL then the library may set a default value
      *                                       for it or let the driver take care of that.
      *

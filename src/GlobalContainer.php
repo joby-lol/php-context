@@ -12,17 +12,19 @@ class GlobalContainer implements ContainerInterface
 
     /**
      * @inheritDoc
+     * @param class-string $class
      */
-    public function get(string $id)
+    public function get(string $class)
     {
-        return Context::get($id);
+        return Context::get($class);
     }
 
     /**
      * @inheritDoc
+     * @param class-string $class
      */
-    public function has(string $id): bool
+    public function has(string $class): bool
     {
-        return Context::has($id);
+        return Context::has($class);
     }
 }

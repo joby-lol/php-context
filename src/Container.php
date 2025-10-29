@@ -81,6 +81,7 @@ class Container implements ContainerInterface
 
     public function __clone()
     {
+        // @phpstan-ignore-next-line it's fine to assign this in __clone()?
         $this->config = clone $this->config;
         $unique_objects = [];
         foreach ($this->built as $category => $built) {
@@ -147,28 +148,31 @@ class Container implements ContainerInterface
      * or by instantiating it for the first time if necessary.
      *
      * @template T of object
-     * @param class-string<T> $id       the class of object to retrieve
+     * @param class-string<T> $class       the class of object to retrieve
      * @param string          $category the category of the object, if applicable (i.e. "current" to get the current
      *                                  page for a request, etc.)
      *
-     * @return object<T>
+     * @return T
      *
      * @throws ContainerException Error while retrieving the entry
-     * @throws NotFoundException  No entry was found for **this** identifier
+     * @throws NotFoundException  No entry was found for **this** class
      */
-    public function get(string $id, string $category = 'default'): object
+    public function get(string $class, string $category = 'default'): object
     {
         // short-circuit on built-in classes
         if ($category === 'default') {
-            if ($id === Invoker::class) return $this->invoker;
-            if ($id === Cache::class) return $this->cache;
-            if ($id === Config::class) return $this->config;
+            // @phpstan-ignore-next-line this is the right class
+            if ($class === Invoker::class) return $this->invoker;
+            // @phpstan-ignore-next-line this is the right class
+            if ($class === Cache::class) return $this->cache;
+            // @phpstan-ignore-next-line this is the right class
+            if ($class === Config::class) return $this->config;
         }
         // normal get/instantiate
-        $output = $this->getBuilt($id, $category)
-            ?? $this->instantiate($id, $category);
+        $output = $this->getBuilt($class, $category)
+            ?? $this->instantiate($class, $category);
         // otherwise return the output
-        assert($output instanceof $id);
+        assert($output instanceof $class);
         return $output;
     }
 
@@ -206,7 +210,7 @@ class Container implements ContainerInterface
     {
         return $this->cache->cache(
             key: 'container/allClasses/' . md5($class),
-            callback: function () use ($class) {
+            callback: function () use ($class): array {
                 return array_merge(
                     [$class],                    // start with the class itself
                     class_parents($class) ?: [], // add all parent classes
@@ -296,13 +300,13 @@ class Container implements ContainerInterface
         } catch (Throwable $th) {
             throw new ContainerException('Error retrieving all classes for class ' . $class . ': ' . $th->getMessage(), previous: $th);
         }
+        assert($built instanceof $class);
         foreach ($all_classes as $alias_class) {
             $this->built[$category][$alias_class] = $built;
         }
         // clean up list of what is currently instantiating
         unset($this->instantiating[$dependency_key]);
         // return the output
-        assert($built instanceof $class);
         return $built;
     }
 }

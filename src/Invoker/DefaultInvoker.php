@@ -57,7 +57,7 @@ class DefaultInvoker implements Invoker
      * @template T of object
      * @param class-string<T> $class
      *
-     * @return object<T>
+     * @return T
      *
      * @throws InstantiationException if an error occurs while instantiating the class
      */
@@ -121,10 +121,13 @@ class DefaultInvoker implements Invoker
                     if (preg_match('/\/\*\*(.*?)\*\//s', $content, $matches)) {
                         // parse the docblock itself
                         $docblock = $matches[1];
-                        $lines = preg_split('/\r?\n/', $docblock);
-                        $lines = array_map(function ($line) {
-                            return trim(preg_replace('/^\s*\*\s*/', '', $line));
-                        }, $lines);
+                        $lines = preg_split('/\r?\n/', $docblock) ?: [];
+                        $lines = array_map(
+                            function (string $line): string {
+                                return trim(preg_replace('/^\s*\*\s*/', '', $line) ?? '');
+                            },
+                            $lines
+                        );
                         $currentCategory = null;
                         $currentConfigKey = null;
                         foreach ($lines as $line) {
@@ -165,6 +168,7 @@ class DefaultInvoker implements Invoker
                                 }
                                 $types = explode('|', $type);
                                 $types = array_map(
+                                    /** @return class-string */
                                     function (string $type) use ($content, $namespace): string {
                                         // return scalar types unchanged
                                         if (in_array($type, ['int', 'string', 'float', 'bool', 'array', 'false'])) return $type;
@@ -219,6 +223,7 @@ class DefaultInvoker implements Invoker
                                     if (count($types) > 1) {
                                         throw new RuntimeException("Cannot use union types for objects.");
                                     }
+                                    /** @var class-string $type */
                                     $type = reset($types);
                                     $vars[$varName] = new ObjectPlaceholder($type, $currentCategory ?? 'default');
                                 }
@@ -255,7 +260,6 @@ class DefaultInvoker implements Invoker
             assert(is_string($fn) || $fn instanceof Closure, 'The provided callable must be a string or a Closure.');
             $reflection = new ReflectionFunction($fn);
             // call with built arguments and return result
-            // @phpstan-ignore-next-line this will always return the return type of the passed callable
             return $reflection->invokeArgs($this->buildFunctionArguments($fn));
         } catch (Throwable $th) {
             throw new ExecutionException($th);
@@ -293,7 +297,7 @@ class DefaultInvoker implements Invoker
     /**
      * @param callable|array{class-string|object,string} $fn
      *
-     * @return array
+     * @return array<mixed>
      * @throws ReflectionException
      * @throws \Psr\SimpleCache\InvalidArgumentException
      */
@@ -314,8 +318,10 @@ class DefaultInvoker implements Invoker
             throw new InvalidArgumentException('The provided callable is not a valid function or method.');
         }
         if ($cache_key) {
+            /** @var array<ConfigPlaceholder|ObjectPlaceholder> $args */
             $args = $this->cache(
                 "buildFunctionArguments/$cache_key",
+                /** @return array<ConfigPlaceholder|ObjectPlaceholder> */
                 function () use ($reflection): array {
                     return $this->doBuildFunctionArguments($reflection);
                 }
@@ -330,7 +336,7 @@ class DefaultInvoker implements Invoker
     /**
      * @param ReflectionFunction|ReflectionMethod $reflection
      *
-     * @return ConfigPlaceholder[]|ObjectPlaceholder[]
+     * @return array<ConfigPlaceholder|ObjectPlaceholder>
      * @throws ReflectionException
      */
     protected function doBuildFunctionArguments(ReflectionFunction|ReflectionMethod $reflection): array
@@ -380,9 +386,9 @@ class DefaultInvoker implements Invoker
     }
 
     /**
-     * @param array<ConfigPlaceholder|ObjectPlaceholder> $args
-     *
-     * @return array
+     * @template TKey
+     * @param array<TKey,ConfigPlaceholder|ObjectPlaceholder> $args
+     * @return array<TKey,mixed>
      * @throws \Psr\SimpleCache\InvalidArgumentException
      */
     protected function resolvePlaceholders(array $args): array
@@ -414,6 +420,8 @@ class DefaultInvoker implements Invoker
     /**
      * Validate that a config value is of the type expected by the parameter and throw an exception
      * if it is an invalid/unexpected type.
+     * 
+     * @param array<string> $types
      *
      * @throws \Psr\SimpleCache\InvalidArgumentException
      */
@@ -475,7 +483,7 @@ function include_isolated(string $path, array $vars): mixed
         extract($vars);
         $return = include $path;
     } catch (Throwable $th) {
-        $buffer = ob_get_contents();
+        $buffer = ob_get_contents() ?: 'Error: output buffering content unavailable.';
         ob_end_clean();
         throw new IncludeException($path, $th, $buffer);
     }

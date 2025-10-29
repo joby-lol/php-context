@@ -54,8 +54,9 @@ class EphemeralCache extends AbstractCacheBackend
     public function set(string $key, mixed $value, DateInterval|int|null $ttl = null): bool
     {
         $ttl = $ttl ?? $this->default_ttl;
-        if ($ttl instanceof DateInterval) $ttl = $ttl->format('%s');
+        if ($ttl instanceof DateInterval) $ttl = (int)$ttl->format('%s');
         $expires = $this->getCurrentTime() + $ttl;
+        assert($expires > 0);
         $this->data[$key] = [$expires, $value];
         return true;
     }

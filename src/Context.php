@@ -66,7 +66,7 @@ class Context
      * @param string          $category the category of the object, if applicable (i.e. "current" to get the current
      *                                  page for a request, etc.)
      *
-     * @return object<T>
+     * @return T
      *
      * @throws NotFoundException  No entry was found for **this** identifier
      * @throws ContainerException Error while retrieving the entry
@@ -82,7 +82,7 @@ class Context
      * @template T of object
      * @param class-string<T> $class
      *
-     * @return object<T>
+     * @return T
      */
     public static function new(string $class): object
     {
