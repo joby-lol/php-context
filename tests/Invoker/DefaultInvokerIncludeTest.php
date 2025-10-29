@@ -228,7 +228,6 @@ class DefaultInvokerIncludeTest extends TestCase
             ->willReturn(true);
         $con = new Container();
         $con->register($guard);
-        $con->get(Invoker::class)->includeGuard = $guard;
         $con->get(Invoker::class)->include(__DIR__ . '/include_tests/empty.php');
     }
 }

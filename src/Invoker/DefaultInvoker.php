@@ -348,7 +348,6 @@ class DefaultInvoker implements Invoker
             // get the type hint of the parameter
             $type = (string)$param->getType();
             assert(!empty($type), "The parameter {$param->getName()} does not have a type hint.");
-            assert(class_exists($type), "The type \"$type\" does not exist.");
             // if there is no ParameterValue attribute, we need to get the value
             // first look for a ParameterCategory attribute so we can determine the category
             $attr = $param->getAttributes(CategoryName::class);
@@ -377,6 +376,7 @@ class DefaultInvoker implements Invoker
                 continue;
             }
             // get value and add it to the args list
+            assert(class_exists($type), "The class $type does not exist for parameter {$param->getName()}.");
             $args[] = new ObjectPlaceholder(
                 $type,
                 $category
