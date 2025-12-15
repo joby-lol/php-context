@@ -23,7 +23,7 @@ This library is ideal for:
 ## Installation
 
 ```bash
-composer require joby/context
+composer require joby/smol-context
 ```
 
 ## Usage Examples
