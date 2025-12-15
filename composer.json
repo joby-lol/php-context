@@ -1,16 +1,16 @@
 {
-    "name": "joby/context",
-    "description": "A lightweight DI container for PHP for global, low‑config service and object registration. Use it to resolve and inject services, objects, and config values anywhere. You can execute callables with injected dependencies, instantiate objects with dependencies, and even include files using a unique DocBlock injection system.",
+    "name": "joby/smol-context",
+    "description": "A lightweight DI container for PHP for global, low-config service and object registration. Use it to resolve and inject services, objects, and config values anywhere. You can execute callables with injected dependencies, instantiate objects with dependencies, and even include files using a unique DocBlock injection system.",
     "type": "library",
     "license": "MIT",
     "require": {
-        "php": "~8.3",
+        "php": ">=8.3",
         "psr/simple-cache": "^3.0",
         "psr/container": "^2.0"
     },
     "autoload": {
         "psr-4": {
-            "Joby\\ContextInjection\\": "src/"
+            "Joby\\Smol\\Context\\": "src/"
         },
         "files": [
             "functions.php"
@@ -18,7 +18,7 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Joby\\ContextInjection\\": "tests/"
+            "Joby\\Smol\\Context\\": "tests/"
         }
     },
     "authors": [

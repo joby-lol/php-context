@@ -6,6 +6,6 @@
  * @var TestClassA|string $test
  */
 
-use Joby\ContextInjection\TestClasses\TestClassA;
+use Joby\Smol\Context\TestClasses\TestClassA;
 
 return $test;

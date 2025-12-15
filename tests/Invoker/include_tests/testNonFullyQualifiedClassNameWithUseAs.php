@@ -5,6 +5,6 @@
  * @var TB $test
  */
 
-use Joby\ContextInjection\TestClasses\TestClassB as TB;
+use Joby\Smol\Context\TestClasses\TestClassB as TB;
 
 return $test;

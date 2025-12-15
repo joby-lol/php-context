@@ -1,25 +1,25 @@
 <?php
 /*
-* Context Injection
-* https://github.com/joby-lol/php-context
+* smolContext
+* https://github.com/joby-lol/smol-context
 * (c) 2024-2025 Joby Elliott code@joby.lol
 * MIT License https://opensource.org/licenses/MIT
 */
 
-namespace Joby\ContextInjection;
+namespace Joby\Smol\Context;
 
-use Joby\ContextInjection\Cache\Cache;
-use Joby\ContextInjection\Cache\DefaultCache;
-use Joby\ContextInjection\Config\Config;
-use Joby\ContextInjection\Config\DefaultConfig;
-use Joby\ContextInjection\Invoker\DefaultInvoker;
-use Joby\ContextInjection\Invoker\Invoker;
-use Joby\ContextInjection\TestClasses\CircularClassA;
-use Joby\ContextInjection\TestClasses\CircularClassB;
-use Joby\ContextInjection\TestClasses\TestClass_requires_A_and_B;
-use Joby\ContextInjection\TestClasses\TestClassA;
-use Joby\ContextInjection\TestClasses\TestClassA1;
-use Joby\ContextInjection\TestClasses\TestClassB;
+use Joby\Smol\Context\Cache\Cache;
+use Joby\Smol\Context\Cache\DefaultCache;
+use Joby\Smol\Context\Config\Config;
+use Joby\Smol\Context\Config\DefaultConfig;
+use Joby\Smol\Context\Invoker\DefaultInvoker;
+use Joby\Smol\Context\Invoker\Invoker;
+use Joby\Smol\Context\TestClasses\CircularClassA;
+use Joby\Smol\Context\TestClasses\CircularClassB;
+use Joby\Smol\Context\TestClasses\TestClass_requires_A_and_B;
+use Joby\Smol\Context\TestClasses\TestClassA;
+use Joby\Smol\Context\TestClasses\TestClassA1;
+use Joby\Smol\Context\TestClasses\TestClassB;
 use PHPUnit\Framework\TestCase;
 
 class ContainerTest extends TestCase

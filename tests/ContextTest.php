@@ -1,15 +1,15 @@
 <?php
 /*
-* Context Injection
-* https://github.com/joby-lol/php-context
+* smolContext
+* https://github.com/joby-lol/smol-context
 * (c) 2024-2025 Joby Elliott code@joby.lol
 * MIT License https://opensource.org/licenses/MIT
 */
 
-namespace Joby\ContextInjection;
+namespace Joby\Smol\Context;
 
-use Joby\ContextInjection\TestClasses\TestClassA;
-use Joby\ContextInjection\TestClasses\TestClassB;
+use Joby\Smol\Context\TestClasses\TestClassA;
+use Joby\Smol\Context\TestClasses\TestClassB;
 use PHPUnit\Framework\TestCase;
 
 class ContextTest extends TestCase

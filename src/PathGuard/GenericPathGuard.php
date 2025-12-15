@@ -6,7 +6,7 @@
  * MIT License https://opensource.org/licenses/MIT
  */
 
-namespace Joby\ContextInjection\PathGuard;
+namespace Joby\Smol\Context\PathGuard;
 
 /**
  * Generic implementation of the PathGuard interface, intended to be used for transient or other more specific uses in

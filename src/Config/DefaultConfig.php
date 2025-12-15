@@ -6,7 +6,7 @@
  * MIT License https://opensource.org/licenses/MIT
  */
 
-namespace Joby\ContextInjection\Config;
+namespace Joby\Smol\Context\Config;
 
 use Throwable;
 

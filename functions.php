@@ -1,18 +1,18 @@
 <?php
 /*
-* Context Injection
-* https://github.com/joby-lol/php-context
+* smolContext
+* https://github.com/joby-lol/smol-context
 * (c) 2024-2025 Joby Elliott code@joby.lol
 * MIT License https://opensource.org/licenses/MIT
 */
 
-use Joby\ContextInjection\ContainerException;
-use Joby\ContextInjection\Context;
-use Joby\ContextInjection\Invoker\ExecutionException;
-use Joby\ContextInjection\Invoker\IncludeException;
-use Joby\ContextInjection\Invoker\InstantiationException;
-use Joby\ContextInjection\Invoker\Invoker;
-use Joby\ContextInjection\NotFoundException;
+use Joby\Smol\Context\ContainerException;
+use Joby\Smol\Context\Context;
+use Joby\Smol\Context\Invoker\ExecutionException;
+use Joby\Smol\Context\Invoker\IncludeException;
+use Joby\Smol\Context\Invoker\InstantiationException;
+use Joby\Smol\Context\Invoker\Invoker;
+use Joby\Smol\Context\NotFoundException;
 
 /**
  * Retrieve a service/object from the context injection system.

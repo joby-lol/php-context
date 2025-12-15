@@ -1,8 +1,8 @@
 <?php
 
-namespace Joby\ContextInjection\TestClasses;
+namespace Joby\Smol\Context\TestClasses;
 
-use Joby\ContextInjection\Config\Config;
+use Joby\Smol\Context\Config\Config;
 
 /**
  * This tests including a file that has a namespace specified, and then has var declarations from both inside and

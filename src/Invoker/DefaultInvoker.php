@@ -6,14 +6,14 @@
  * MIT License https://opensource.org/licenses/MIT
  */
 
-namespace Joby\ContextInjection\Invoker;
+namespace Joby\Smol\Context\Invoker;
 
 use Closure;
 use InvalidArgumentException;
-use Joby\ContextInjection\Config\Config;
-use Joby\ContextInjection\Config\ConfigTypeException;
-use Joby\ContextInjection\Container;
-use Joby\ContextInjection\PathGuard\IncludeGuard;
+use Joby\Smol\Context\Config\Config;
+use Joby\Smol\Context\Config\ConfigTypeException;
+use Joby\Smol\Context\Container;
+use Joby\Smol\Context\PathGuard\IncludeGuard;
 use ReflectionException;
 use ReflectionFunction;
 use ReflectionMethod;

@@ -6,7 +6,7 @@
  * MIT License https://opensource.org/licenses/MIT
  */
 
-namespace Joby\ContextInjection\PathGuard;
+namespace Joby\Smol\Context\PathGuard;
 
 /**
  * Default include guard implementation.

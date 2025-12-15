@@ -1,10 +1,10 @@
-# Context Injection
+# smolContext
 
 A lightweight, static dependency injection container for PHP that combines simplicity with powerful features.
 
 ## What is it?
 
-Context Injection is a PHP library that provides a global static dependency injection container. It allows you to:
+smolContext is a PHP library that provides a global static dependency injection container. It allows you to:
 
 - Register and retrieve services/objects from anywhere in your codebase
 - Automatically resolve dependencies when instantiating objects
@@ -110,13 +110,13 @@ $report = ctx_include('/path/to/user_report.php');
 Depending on your project's security requirements, you may want to have checks in place to ensure that included files
 are coming from trusted locations. In particular, if their paths are derived from user input, you should establish some
 kind of checks. Includes can be automatically checked for malicious paths by registering an object that implements the
-interface `Joby\ContextInjection\IncludeGuard\IncludeGuard`.
+interface `Joby\Smol\Context\IncludeGuard\IncludeGuard`.
 
 This interface is designed to be very simple, so that it can be easily implemented, or used by other services that might
 be capable of including or otherwise executing files.
 
 There is a basic implementation of this interface in the library already, at
-`Joby\ContextInjection\IncludeGuard\DefaultIncludeGuard`. It is a simple allow/deny list that lets you allow/deny
+`Joby\Smol\Context\IncludeGuard\DefaultIncludeGuard`. It is a simple allow/deny list that lets you allow/deny
 specific directories and/or individual files in one easily-configurable place.
 
 ## Built-in Configuration System
@@ -169,7 +169,7 @@ The configuration system supports:
 
 ## Advanced Documentation
 
-For more detailed information about the internal components and advanced features of the Context Injection library,
+For more detailed information about the internal components and advanced features of the smolContext library,
 please see the [Advanced Documentation](README_advanced.md).
 
 ## License

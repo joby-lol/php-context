@@ -6,7 +6,7 @@
  * MIT License https://opensource.org/licenses/MIT
  */
 
-namespace Joby\ContextInjection;
+namespace Joby\Smol\Context;
 
 /**
  * The main static context injector. This works similarly to a normal dependency injection container, but it is static

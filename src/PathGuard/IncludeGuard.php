@@ -6,7 +6,7 @@
  * MIT License https://opensource.org/licenses/MIT
  */
 
-namespace Joby\ContextInjection\PathGuard;
+namespace Joby\Smol\Context\PathGuard;
 
 /**
  * Interface for a path guard that can be used to prevent certain files or directories from being included. Internally

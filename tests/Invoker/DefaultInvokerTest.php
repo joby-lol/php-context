@@ -1,19 +1,19 @@
 <?php
 /*
-* Context Injection
-* https://github.com/joby-lol/php-context
+* smolContext
+* https://github.com/joby-lol/smol-context
 * (c) 2024-2025 Joby Elliott code@joby.lol
 * MIT License https://opensource.org/licenses/MIT
 */
 
-namespace Joby\ContextInjection\Invoker;
+namespace Joby\Smol\Context\Invoker;
 
-use Joby\ContextInjection\Config\Config;
-use Joby\ContextInjection\Config\DefaultConfig;
-use Joby\ContextInjection\Container;
-use Joby\ContextInjection\TestClasses\TestClass_requires_A_and_B;
-use Joby\ContextInjection\TestClasses\TestClassA;
-use Joby\ContextInjection\TestClasses\TestClassB;
+use Joby\Smol\Context\Config\Config;
+use Joby\Smol\Context\Config\DefaultConfig;
+use Joby\Smol\Context\Container;
+use Joby\Smol\Context\TestClasses\TestClass_requires_A_and_B;
+use Joby\Smol\Context\TestClasses\TestClassA;
+use Joby\Smol\Context\TestClasses\TestClassB;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -42,7 +42,7 @@ class DefaultInvokerTest extends TestCase
         $inv = new DefaultInvoker($con);
         $this->assertEquals(
             'Hello, world!',
-            $inv->execute('Joby\ContextInjection\Invoker\testFunction')
+            $inv->execute('Joby\Smol\Context\Invoker\testFunction')
         );
     }
 

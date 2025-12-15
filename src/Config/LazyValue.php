@@ -6,7 +6,7 @@
  * MIT License https://opensource.org/licenses/MIT
  */
 
-namespace Joby\ContextInjection\Config;
+namespace Joby\Smol\Context\Config;
 
 /**
  * Config value type that can be used for values that are expensive to retrieve or generate, so that they can be loaded

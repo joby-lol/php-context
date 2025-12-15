@@ -6,7 +6,7 @@
  * MIT License https://opensource.org/licenses/MIT
  */
 
-namespace Joby\ContextInjection\Config;
+namespace Joby\Smol\Context\Config;
 
 /**
  * A value that resolves to null. Generally this is only used in locators to indicate that the return value should be

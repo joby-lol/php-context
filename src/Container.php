@@ -6,14 +6,14 @@
  * MIT License https://opensource.org/licenses/MIT
  */
 
-namespace Joby\ContextInjection;
+namespace Joby\Smol\Context;
 
-use Joby\ContextInjection\Cache\Cache;
-use Joby\ContextInjection\Cache\DefaultCache;
-use Joby\ContextInjection\Config\Config;
-use Joby\ContextInjection\Config\DefaultConfig;
-use Joby\ContextInjection\Invoker\DefaultInvoker;
-use Joby\ContextInjection\Invoker\Invoker;
+use Joby\Smol\Context\Cache\Cache;
+use Joby\Smol\Context\Cache\DefaultCache;
+use Joby\Smol\Context\Config\Config;
+use Joby\Smol\Context\Config\DefaultConfig;
+use Joby\Smol\Context\Invoker\DefaultInvoker;
+use Joby\Smol\Context\Invoker\Invoker;
 use Psr\Container\ContainerInterface;
 use Psr\SimpleCache\InvalidArgumentException;
 use RuntimeException;
@@ -100,8 +100,7 @@ class Container implements ContainerInterface
     public function register(
         string|object $class,
         string        $category = 'default',
-    ): void
-    {
+    ): void {
         // if the class is an object, get its class name
         if (is_object($class)) {
             $object = $class;
@@ -169,8 +168,7 @@ class Container implements ContainerInterface
     public function has(
         string $id,
         string $category = 'default',
-    ): bool
-    {
+    ): bool {
         // short-circuit on built-in classes
         if ($id === Invoker::class) return true;
         if ($id === Cache::class) return true;
@@ -256,7 +254,7 @@ class Container implements ContainerInterface
         if (!isset($this->classes[$category][$class])) {
             throw new ContainerException(
                 "The class $class is not registered in the context under category $category. " .
-                "Did you forget to call " . get_called_class() . "::register() to register it?"
+                    "Did you forget to call " . get_called_class() . "::register() to register it?"
             );
         }
         // get the actual class name from the registered classes
@@ -266,7 +264,7 @@ class Container implements ContainerInterface
         if (isset($this->instantiating[$dependency_key])) {
             throw new RuntimeException(
                 "Circular dependency detected when instantiating $class in category $category. " .
-                implode(' -> ', array_keys($this->instantiating))
+                    implode(' -> ', array_keys($this->instantiating))
             );
         }
         // Mark this class as currently being instantiated

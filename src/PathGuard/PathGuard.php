@@ -6,7 +6,7 @@
  * MIT License https://opensource.org/licenses/MIT
  */
 
-namespace Joby\ContextInjection\PathGuard;
+namespace Joby\Smol\Context\PathGuard;
 
 /**
  * Generic interface for classes that are used to check if a file is allowed to be used in some way, be that including,

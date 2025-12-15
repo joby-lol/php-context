@@ -6,7 +6,7 @@
  * MIT License https://opensource.org/licenses/MIT
  */
 
-namespace Joby\ContextInjection\Invoker;
+namespace Joby\Smol\Context\Invoker;
 
 /**
  * Class for holding the requested config key, category, and valid types of a config key that is being requested for

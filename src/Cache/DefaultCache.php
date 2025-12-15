@@ -6,9 +6,9 @@
  * MIT License https://opensource.org/licenses/MIT
  */
 
-namespace Joby\ContextInjection\Cache;
+namespace Joby\Smol\Context\Cache;
 
-use Joby\ContextInjection\Cache\Backends\EphemeralCache;
+use Joby\Smol\Context\Cache\Backends\EphemeralCache;
 
 class DefaultCache extends CacheWrapper
 {

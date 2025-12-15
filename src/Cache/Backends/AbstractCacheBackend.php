@@ -6,7 +6,7 @@
  * MIT License https://opensource.org/licenses/MIT
  */
 
-namespace Joby\ContextInjection\Cache\Backends;
+namespace Joby\Smol\Context\Cache\Backends;
 
 use DateInterval;
 use Psr\SimpleCache\InvalidArgumentException;

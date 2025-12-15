@@ -1,6 +1,6 @@
 <?php
 
-namespace Joby\ContextInjection\TestClasses;
+namespace Joby\Smol\Context\TestClasses;
 
 class TestClassA
 {

@@ -1,30 +1,39 @@
-# Context Injection - Advanced Documentation
+# smolContext - Advanced Documentation
 
-This document provides detailed information about the internal components and advanced features of the Context Injection
-library.
+This document provides detailed information about the internal components and advanced features of the smolContext library.
 
 ## Table of Contents
 
-- [The Context Class](#the-context-class)
-- [The Container Class](#the-container-class)
-- [Attributes](#attributes)
+- [smolContext - Advanced Documentation](#smolcontext---advanced-documentation)
+  - [Table of Contents](#table-of-contents)
+  - [The Context Class](#the-context-class)
+  - [The Container Class](#the-container-class)
+    - [How the Container Works](#how-the-container-works)
+  - [Attributes](#attributes)
     - [ConfigValue Attribute](#configvalue-attribute)
     - [CategoryName Attribute](#categoryname-attribute)
-- [PathGuard services](#pathguard-services)
+  - [PathGuard services](#pathguard-services)
     - [DefaultIncludeGuard Implementation](#defaultincludeguard-implementation)
-- [Configuration System](#configuration-system)
+  - [Configuration System](#configuration-system)
     - [Config Interface](#config-interface)
     - [DefaultConfig Implementation](#defaultconfig-implementation)
     - [ConfigValue Types](#configvalue-types)
-  - [Advanced Configuration Features](#advanced-configuration-features)
+      - [InterpolatedValue](#interpolatedvalue)
+      - [LazyValue](#lazyvalue)
+      - [NullValue](#nullvalue)
+    - [Advanced Configuration Features](#advanced-configuration-features)
+      - [Type Validation](#type-validation)
+      - [Optional Parameters](#optional-parameters)
+      - [Nullable Parameters](#nullable-parameters)
+      - [Union Types](#union-types)
+      - [String Interpolation](#string-interpolation)
 
 ## The Context Class
 
-The `Context` class is the main static entry point for the Context Injection system. It provides static methods for
-retrieving objects, registering classes/objects, and checking if a class is registered.
+The `Context` class is the main static entry point for the smolContext system. It provides static methods for retrieving objects, registering classes/objects, and checking if a class is registered.
 
 ```php
-namespace Joby\ContextInjection;
+namespace Joby\Smol\Context;
 
 class Context
 {
@@ -42,8 +51,7 @@ class Context
 }
 ```
 
-The `Context` class is designed to be used in a static context, so it can be accessed from anywhere in your codebase
-without needing to pass it around. It acts as a facade for the underlying `Container` instance.
+The `Context` class is designed to be used in a static context, so it can be accessed from anywhere in your codebase without needing to pass it around. It acts as a facade for the underlying `Container` instance.
 
 Key features:
 
@@ -54,11 +62,10 @@ Key features:
 
 ## The Container Class
 
-The `Container` class is responsible for managing registered classes and objects. It provides methods for registering
-classes/objects, retrieving objects, and checking if a class is registered.
+The `Container` class is responsible for managing registered classes and objects. It provides methods for registering classes/objects, retrieving objects, and checking if a class is registered.
 
 ```php
-namespace Joby\ContextInjection;
+namespace Joby\Smol\Context;
 
 class Container
 {
@@ -104,8 +111,7 @@ Key features:
 
 ## Attributes
 
-The Context Injection library uses PHP 8 attributes to provide additional information about how dependencies should be
-resolved.
+The smolContext library uses PHP 8 attributes to provide additional information about how dependencies should be resolved.
 
 ### ConfigValue Attribute
 
@@ -127,8 +133,7 @@ ctx_execute('generateReport');
 
 ### CategoryName Attribute
 
-The `CategoryName` attribute is used to specify the category from which a parameter should be pulled when injecting
-dependencies.
+The `CategoryName` attribute is used to specify the category from which a parameter should be pulled when injecting dependencies.
 
 Usage example:
 
@@ -151,27 +156,17 @@ ctx_execute('processUser');
 
 ## PathGuard services
 
-The Context Injection library provides a `PathGuard` interface that can be used to check whether a given file is
-allowed to be used for various purposes. By default, this is used in the `Invoker` under the name `IncludeGuard` as a
-mechanism for preventing the inclusion of untrusted files. The interface is a single `check($filename)` method that
-returns a boolean indicating whether the file is allowed to be used. You can implement your own `PathGuard` services
-to customize the behavior, or you can use the `DefaultReadGuard`, `DefaultWriteGuard` and `DefaultIncludeGuard`
-that provide basic management by allowing/denying directories and full path names.
+The smolContext library provides a `PathGuard` interface that can be used to check whether a given file is allowed to be used for various purposes. By default, this is used in the `Invoker` under the name `IncludeGuard` as a mechanism for preventing the inclusion of untrusted files. The interface is a single `check($filename)` method that returns a boolean indicating whether the file is allowed to be used. You can implement your own `PathGuard` services to customize the behavior, or you can use the `DefaultReadGuard`, `DefaultWriteGuard` and `DefaultIncludeGuard` that provide basic management by allowing/denying directories and full path names.
 
-The `PathGuard` interface is intended as a general-purpose mechanism for preventing untrusted code from being
-included, and may also be used by other services if they need to check whether a file is allowed to be
-included/executed.
+The `PathGuard` interface is intended as a general-purpose mechanism for preventing untrusted code from being included, and may also be used by other services if they need to check whether a file is allowed to be included/executed.
 
 ### DefaultIncludeGuard Implementation
 
-Default include guard implementation. Does basic checks to allow and deny includes by directory or full directory. File
-rules take precedence over directory rules, and after that deny rules take precedence over allow rules. This means that
-you can allow a directory, but deny files or subdirectories within it. It also means that you can deny a directory, but
-allow specific files within it.
+Default include guard implementation. Does basic checks to allow and deny includes by directory or full directory. File rules take precedence over directory rules, and after that deny rules take precedence over allow rules. This means that you can allow a directory, but deny files or subdirectories within it. It also means that you can deny a directory, but allow specific files within it.
 
 ```php
 // Instantiate a new default include guard and register it
-$guard = new Joby\ContextInjection\PathGuard\DefaultIncludeGuard();
+$guard = new Joby\Smol\Context\PathGuard\DefaultIncludeGuard();
 ctx_register($guard);
 // Allow a directory
 $guard->allowDirectory('/path/to/allow');
@@ -185,15 +180,14 @@ $guard->denyFile('/path/to/allow/file.php');
 
 ## Configuration System
 
-The Context Injection library includes a powerful configuration system that allows you to manage configuration values
-and inject them as dependencies.
+The smolContext library includes a powerful configuration system that allows you to manage configuration values and inject them as dependencies.
 
 ### Config Interface
 
 The `Config` interface defines methods for managing configuration values.
 
 ```php
-namespace Joby\ContextInjection\Config;
+namespace Joby\Smol\Context\Config;
 
 interface Config
 {
@@ -216,11 +210,10 @@ interface Config
 
 ### DefaultConfig Implementation
 
-The `DefaultConfig` class is the default implementation of the `Config` interface. It provides a comprehensive
-configuration system with features like default values, value locators, and caching.
+The `DefaultConfig` class is the default implementation of the `Config` interface. It provides a comprehensive configuration system with features like default values, value locators, and caching.
 
 ```php
-namespace Joby\ContextInjection\Config;
+namespace Joby\Smol\Context\Config;
 
 class DefaultConfig implements Config
 {

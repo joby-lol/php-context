@@ -6,7 +6,7 @@
  * MIT License https://opensource.org/licenses/MIT
  */
 
-namespace Joby\ContextInjection\Cache;
+namespace Joby\Smol\Context\Cache;
 
 use DateInterval;
 use Psr\SimpleCache\CacheInterface;

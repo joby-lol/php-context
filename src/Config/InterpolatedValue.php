@@ -6,7 +6,7 @@
  * MIT License https://opensource.org/licenses/MIT
  */
 
-namespace Joby\ContextInjection\Config;
+namespace Joby\Smol\Context\Config;
 
 /**
  * Indicates a config value that must have other values interpolated. Values must be explicitly set as

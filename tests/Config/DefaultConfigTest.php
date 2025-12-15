@@ -1,12 +1,12 @@
 <?php
 /*
-* Context Injection
-* https://github.com/joby-lol/php-context
+* smolContext
+* https://github.com/joby-lol/smol-context
 * (c) 2024-2025 Joby Elliott code@joby.lol
 * MIT License https://opensource.org/licenses/MIT
 */
 
-namespace Joby\ContextInjection\Config;
+namespace Joby\Smol\Context\Config;
 
 use PHPUnit\Framework\TestCase;
 use RuntimeException;

@@ -6,7 +6,7 @@
  * MIT License https://opensource.org/licenses/MIT
  */
 
-namespace Joby\ContextInjection\Cache;
+namespace Joby\Smol\Context\Cache;
 
 /**
  * Empty class used as a default internally for distinguishing between a truly unset cache value and an actual cached

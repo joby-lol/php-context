@@ -6,7 +6,7 @@
  * MIT License https://opensource.org/licenses/MIT
  */
 
-namespace Joby\ContextInjection\Invoker;
+namespace Joby\Smol\Context\Invoker;
 
 use Attribute;
 

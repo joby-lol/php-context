@@ -6,7 +6,7 @@
  * MIT License https://opensource.org/licenses/MIT
  */
 
-namespace Joby\ContextInjection\Invoker;
+namespace Joby\Smol\Context\Invoker;
 
 /**
  * Class for holding the requested class name and category of a parameter that must be resolved before passing it to

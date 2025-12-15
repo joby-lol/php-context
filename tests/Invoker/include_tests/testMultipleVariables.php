@@ -8,8 +8,8 @@
  * @var string                                        $test_value
  */
 
-use Joby\ContextInjection\TestClasses\TestClassA;
-use Joby\ContextInjection\TestClasses\TestClassB;
+use Joby\Smol\Context\TestClasses\TestClassA;
+use Joby\Smol\Context\TestClasses\TestClassB;
 
 return [
     'test_a' => $test_a,

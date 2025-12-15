@@ -1,6 +1,6 @@
 <?php
 
-namespace Joby\ContextInjection\PathGuard;
+namespace Joby\Smol\Context\PathGuard;
 /*
  * Context Injection
  * https://github.com/joby-lol/php-context

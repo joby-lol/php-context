@@ -6,9 +6,9 @@
  * MIT License https://opensource.org/licenses/MIT
  */
 
-namespace Joby\ContextInjection\Invoker;
+namespace Joby\Smol\Context\Invoker;
 
-use Joby\ContextInjection\Container;
+use Joby\Smol\Context\Container;
 
 /**
  * Interface for the class the content injection system uses to instantiate
