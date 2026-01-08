@@ -116,6 +116,9 @@ class Context
         static::$current = static::createContainer();
     }
 
+    /**
+     * Close the current context and revert to the prior one on the stack.
+     */
     public static function close(): void
     {
         static::$current = array_pop(static::$stack);
