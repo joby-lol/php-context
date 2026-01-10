@@ -8,9 +8,8 @@
 
 namespace Joby\Smol\Context;
 
-use Psr\Container\ContainerExceptionInterface;
 use RuntimeException;
 
-class ContainerException extends RuntimeException implements ContainerExceptionInterface
+class ContainerException extends RuntimeException
 {
 }

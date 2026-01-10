@@ -110,13 +110,13 @@ $report = ctx_include('/path/to/user_report.php');
 Depending on your project's security requirements, you may want to have checks in place to ensure that included files
 are coming from trusted locations. In particular, if their paths are derived from user input, you should establish some
 kind of checks. Includes can be automatically checked for malicious paths by registering an object that implements the
-interface `Joby\Smol\Context\IncludeGuard\IncludeGuard`.
+interface `Joby\Smol\Context\PathGuard\IncludeGuard`.
 
 This interface is designed to be very simple, so that it can be easily implemented, or used by other services that might
 be capable of including or otherwise executing files.
 
 There is a basic implementation of this interface in the library already, at
-`Joby\Smol\Context\IncludeGuard\DefaultIncludeGuard`. It is a simple allow/deny list that lets you allow/deny
+`Joby\Smol\Context\PathGuard\DefaultIncludeGuard`. It is a simple allow/deny list that lets you allow/deny
 specific directories and/or individual files in one easily-configurable place.
 
 ## Built-in Configuration System

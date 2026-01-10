@@ -9,11 +9,13 @@
 namespace Joby\Smol\Context\Cache;
 
 use Joby\Smol\Context\Cache\Backends\EphemeralCache;
+use Psr\SimpleCache\CacheInterface;
 
 class DefaultCache extends CacheWrapper
 {
-    public function __construct()
+
+    public function __construct(CacheInterface|null $cache = null)
     {
-        parent::__construct(new EphemeralCache());
+        parent::__construct($cache ?? new EphemeralCache());
     }
 }

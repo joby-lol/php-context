@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Context Injection
  * https://github.com/joby-lol/php-context
@@ -14,9 +15,7 @@ use Joby\Smol\Context\Config\Config;
 use Joby\Smol\Context\Config\DefaultConfig;
 use Joby\Smol\Context\Invoker\DefaultInvoker;
 use Joby\Smol\Context\Invoker\Invoker;
-use Psr\Container\ContainerInterface;
 use Psr\SimpleCache\InvalidArgumentException;
-use RuntimeException;
 use Throwable;
 
 /**
@@ -24,11 +23,15 @@ use Throwable;
  * allows registrations of classes or objects, instantiation of classes on demand, and management of object
  * dependencies, optionally split across multiple named categories.
  */
-class Container implements ContainerInterface
+class Container
 {
+
     public readonly Cache $cache;
+
     public readonly Config $config;
+
     public readonly Invoker $invoker;
+
     /**
      * Array holding the classes that have been registered, including their
      * parent classes, sorted first by category and then by class name, listing
@@ -40,6 +43,7 @@ class Container implements ContainerInterface
      * @var array<string, array<class-string, class-string>>
      */
     protected array $classes = [];
+
     /**
      * Array holding the built objects, indexed first by category and then by
      * class name. There will be multiple copies of most objects, as they are
@@ -48,6 +52,7 @@ class Container implements ContainerInterface
      * @var array<string, array<class-string, object>>
      */
     protected array $built = [];
+
     /**
      * List of the current dependencies that are being instantiated to detect circular dependencies.
      *
@@ -64,12 +69,15 @@ class Container implements ContainerInterface
 
     public function __clone()
     {
-        // @phpstan-ignore-next-line it's fine to assign this in __clone()?
+        // @phpstan-ignore-next-line it's fine to assign this in __clone()
         $this->config = clone $this->config;
+        // @phpstan-ignore-next-line it's fine to assign this in __clone()
+        $this->invoker = new ($this->invoker::class)($this);
         $unique_objects = [];
         foreach ($this->built as $category => $built) {
             foreach ($built as $object) {
-                if (!array_key_exists(spl_object_id($object), $unique_objects)) $unique_objects[spl_object_id($object)] = [clone $object, []];
+                if (!array_key_exists(spl_object_id($object), $unique_objects))
+                    $unique_objects[spl_object_id($object)] = [clone $object, []];
                 $unique_objects[spl_object_id($object)][1][] = $category;
             }
         }
@@ -99,8 +107,9 @@ class Container implements ContainerInterface
      */
     public function register(
         string|object $class,
-        string        $category = 'default',
-    ): void {
+        string $category = 'default',
+    ): void
+    {
         // if the class is an object, get its class name
         if (is_object($class)) {
             $object = $class;
@@ -110,7 +119,8 @@ class Container implements ContainerInterface
         // get all parent classes of the registered class
         try {
             $all_classes = $this->allClasses($class);
-        } catch (Throwable $th) {
+        }
+        catch (Throwable $th) {
             throw new ContainerException('Error retrieving all classes for class ' . $class . ': ' . $th->getMessage(), previous: $th);
         }
         // save all classes under the class name alias list
@@ -142,14 +152,12 @@ class Container implements ContainerInterface
     public function get(string $class, string $category = 'default'): object
     {
         // short-circuit on built-in classes
-        if ($category === 'default') {
-            // @phpstan-ignore-next-line this is the right class
-            if ($class === Invoker::class) return $this->invoker;
-            // @phpstan-ignore-next-line this is the right class
-            if ($class === Cache::class) return $this->cache;
-            // @phpstan-ignore-next-line this is the right class
-            if ($class === Config::class) return $this->config;
-        }
+        if ($class === Invoker::class)
+            return $this->invoker; // @phpstan-ignore-line this is the right class
+        if ($class === Cache::class)
+            return $this->cache; // @phpstan-ignore-line this is the right class
+        if ($class === Config::class)
+            return $this->config; // @phpstan-ignore-line this is the right class
         // normal get/instantiate
         $output = $this->getBuilt($class, $category)
             ?? $this->instantiate($class, $category);
@@ -168,11 +176,15 @@ class Container implements ContainerInterface
     public function has(
         string $id,
         string $category = 'default',
-    ): bool {
+    ): bool
+    {
         // short-circuit on built-in classes
-        if ($id === Invoker::class) return true;
-        if ($id === Cache::class) return true;
-        if ($id === Config::class) return true;
+        if ($id === Invoker::class)
+            return true;
+        if ($id === Cache::class)
+            return true;
+        if ($id === Config::class)
+            return true;
         // check if the class is registered in the given category
         return isset($this->classes[$category][$id]);
     }
@@ -228,8 +240,8 @@ class Container implements ContainerInterface
                 "The built object for class %s in category %s is not of the expected type (got a %s).",
                 $class,
                 $category,
-                get_class($this->built[$category][$class])
-            )
+                get_class($this->built[$category][$class]),
+            ),
         );
         return $this->built[$category][$class];
     }
@@ -252,9 +264,9 @@ class Container implements ContainerInterface
     {
         // if the class is not registered, return null
         if (!isset($this->classes[$category][$class])) {
-            throw new ContainerException(
+            throw new NotFoundException(
                 "The class $class is not registered in the context under category $category. " .
-                    "Did you forget to call " . get_called_class() . "::register() to register it?"
+                "Did you forget to call " . get_called_class() . "::register() to register it?"
             );
         }
         // get the actual class name from the registered classes
@@ -262,9 +274,9 @@ class Container implements ContainerInterface
         // check for circular dependencies
         $dependency_key = implode('|', [$category, $actual_class]);
         if (isset($this->instantiating[$dependency_key])) {
-            throw new RuntimeException(
+            throw new ContainerException(
                 "Circular dependency detected when instantiating $class in category $category. " .
-                    implode(' -> ', array_keys($this->instantiating))
+                implode(' -> ', array_keys($this->instantiating))
             );
         }
         // Mark this class as currently being instantiated
@@ -272,13 +284,15 @@ class Container implements ContainerInterface
         // instantiate the class and save it under the built objects
         try {
             $built = $this->get(Invoker::class)->instantiate($actual_class);
-        } catch (Throwable $th) {
+        }
+        catch (Throwable $th) {
             throw new ContainerException('Error instantiating class ' . $class . ': ' . $th->getMessage(), previous: $th);
         }
         // save the built object under all parent classes and interfaces
         try {
             $all_classes = $this->allClasses($actual_class);
-        } catch (Throwable $th) {
+        }
+        catch (Throwable $th) {
             throw new ContainerException('Error retrieving all classes for class ' . $class . ': ' . $th->getMessage(), previous: $th);
         }
         assert($built instanceof $class);
@@ -290,4 +304,5 @@ class Container implements ContainerInterface
         // return the output
         return $built;
     }
+
 }

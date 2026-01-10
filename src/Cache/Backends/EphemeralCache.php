@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Context Injection
  * https://github.com/joby-lol/php-context
@@ -9,12 +10,13 @@
 namespace Joby\Smol\Context\Cache\Backends;
 
 use DateInterval;
+use DateTimeImmutable;
 
 class EphemeralCache extends AbstractCacheBackend
 {
+
     /**
-     * Array of cached data, indexed by key, with each value containing a tuple of an expiration timestamp and a
-     * cached data value.
+     * Array of cached data, indexed by key, with each value containing a tuple of an expiration timestamp and a cached data value.
      *
      * @var array<string,array{positive-int,mixed}>
      */
@@ -37,7 +39,10 @@ class EphemeralCache extends AbstractCacheBackend
     public function set(string $key, mixed $value, DateInterval|int|null $ttl = null): bool
     {
         $ttl = $ttl ?? $this->default_ttl;
-        if ($ttl instanceof DateInterval) $ttl = (int)$ttl->format('%s');
+        if ($ttl instanceof DateInterval) {
+            $now = new DateTimeImmutable('@' . $this->getCurrentTime());
+            $ttl = $now->add($ttl)->getTimestamp() - $now->getTimestamp();
+        }
         $expires = $this->getCurrentTime() + $ttl;
         assert($expires > 0);
         $this->data[$key] = [$expires, $value];
@@ -54,4 +59,5 @@ class EphemeralCache extends AbstractCacheBackend
     {
         return isset($this->data[$key]) && $this->data[$key][0] >= $this->getCurrentTime();
     }
+
 }

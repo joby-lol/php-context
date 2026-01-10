@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Context Injection
  * https://github.com/joby-lol/php-context
@@ -27,11 +28,10 @@ use Throwable;
  */
 class DefaultInvoker implements Invoker
 {
+
     protected IncludeGuard|null $include_guard;
 
-    public function __construct(protected Container $container)
-    {
-    }
+    public function __construct(protected Container $container) {}
 
     /**
      * Instantiate a class of the given type, resolving all its dependencies
@@ -47,9 +47,12 @@ class DefaultInvoker implements Invoker
     public function instantiate(string $class): object
     {
         try {
-            if (!method_exists($class, '__construct')) $object = new $class;
-            else $object = new $class(...$this->buildFunctionArguments([$class, '__construct']));
-        } catch (Throwable $th) {
+            if (!method_exists($class, '__construct'))
+                $object = new $class;
+            else
+                $object = new $class(...$this->buildFunctionArguments([$class, '__construct']));
+        }
+        catch (Throwable $th) {
             throw new InstantiationException($class, $th);
         }
         assert($object instanceof $class, "The instantiated object is not of type $class.");
@@ -63,7 +66,7 @@ class DefaultInvoker implements Invoker
      *  Because docblock tags don't support Attributes, their equivalents are just parsed as strings.
      *  Core attributes are available by inserting strings that look like them on lines preceding a var tag. The
      *  actual Attribute classes need not be included, because this system just looks for strings that
-     *  look like `#[CategoryName("category_name")]` or `[ConfigValue("config_key")]`.
+     *  look like `#[CategoryName("category_name")]` or `#[ConfigValue("config_key")]`.
      *
      *  This method will return either the output of the included file, or the value returned by it if there is one.
      *  Note that if the included script explicitly returns the integer "1" that cannot be differentiated from returning
@@ -77,11 +80,14 @@ class DefaultInvoker implements Invoker
         try {
             // clean up path
             $path = realpath($file);
-            if (!$path) throw new RuntimeException("File $file does not exist.");
+            if (!$path)
+                throw new RuntimeException("File $file does not exist.");
             // check that file is readable
-            if (!is_readable($path)) throw new RuntimeException("File $file is not readable.");
+            if (!is_readable($path))
+                throw new RuntimeException("File $file is not readable.");
             // check that path is allowed to be included, if an IncludeGuard is registered
-            if (false === $this->includeGuard()?->check($path)) throw new RuntimeException("File $file is not allowed to be included.");
+            if (false === $this->includeGuard()?->check($path))
+                throw new RuntimeException("File $file is not allowed to be included.");
             // cache further operations
             $key = md5_file($path);
             /** @var array<string,ConfigPlaceholder|ObjectPlaceholder> $vars */
@@ -92,7 +98,8 @@ class DefaultInvoker implements Invoker
                  */
                 function () use ($path): array {
                     $content = file_get_contents($path);
-                    if ($content === false) throw new RuntimeException("Could not read file");
+                    if ($content === false)
+                        throw new RuntimeException("Could not read file");
                     $vars = [];
                     $namespace = null;
                     // look for a namespace declaration
@@ -109,12 +116,13 @@ class DefaultInvoker implements Invoker
                             function (string $line): string {
                                 return trim(preg_replace('/^\s*\*\s*/', '', $line) ?? '');
                             },
-                            $lines
+                            $lines,
                         );
                         $currentCategory = null;
                         $currentConfigKey = null;
                         foreach ($lines as $line) {
-                            if (!$line) continue;
+                            if (!$line)
+                                continue;
                             // check for category attribute with double quotes
                             if (preg_match('/#\[CategoryName\("([^"]+)"\)]/', $line, $matches)) {
                                 $currentCategory = $matches[1];
@@ -142,10 +150,12 @@ class DefaultInvoker implements Invoker
                                 if (str_starts_with($type, '?')) {
                                     $allowNull = true;
                                     $type = substr($type, 1);
-                                } elseif (str_starts_with($type, 'null|')) {
+                                }
+                                elseif (str_starts_with($type, 'null|')) {
                                     $allowNull = true;
                                     $type = substr($type, 5);
-                                } elseif (str_ends_with($type, '|null')) {
+                                }
+                                elseif (str_ends_with($type, '|null')) {
                                     $allowNull = true;
                                     $type = substr($type, 0, -5);
                                 }
@@ -154,7 +164,8 @@ class DefaultInvoker implements Invoker
                                     /** @return class-string */
                                     function (string $type) use ($content, $namespace): string {
                                         // return scalar types unchanged
-                                        if (in_array($type, ['int', 'string', 'float', 'bool', 'array', 'false'])) return $type;
+                                        if (in_array($type, ['int', 'string', 'float', 'bool', 'array', 'false']))
+                                            return $type;
                                         // make relative to namespace if the type doesn't start with a slash
                                         $relative = true;
                                         if (str_starts_with($type, '\\')) {
@@ -169,10 +180,12 @@ class DefaultInvoker implements Invoker
                                             if (preg_match($pattern1, $content, $m)) {
                                                 $type = $m[1];
                                                 // $relative = false; // commented out because relative-ness no longer actually matters
-                                            } elseif (preg_match($pattern2, $content, $m)) {
+                                            }
+                                            elseif (preg_match($pattern2, $content, $m)) {
                                                 $type = $m[1];
                                                 // $relative = false; // commented out because relative-ness no longer actually matters
-                                            } else {
+                                            }
+                                            else {
                                                 // if this is a relative class and there is a namespace, prepend the namespace
                                                 if ($relative && $namespace) {
                                                     $class = $namespace . '\\' . $type;
@@ -186,7 +199,7 @@ class DefaultInvoker implements Invoker
                                         // return parsed type
                                         return $type;
                                     },
-                                    $types
+                                    $types,
                                 );
                                 // build value
                                 sort($types);
@@ -201,7 +214,8 @@ class DefaultInvoker implements Invoker
                                         $allowNull,
                                         $currentCategory ?? 'default'
                                     );
-                                } else {
+                                }
+                                else {
                                     // this variable is an object
                                     if (count($types) > 1) {
                                         throw new RuntimeException("Cannot use union types for objects.");
@@ -218,9 +232,11 @@ class DefaultInvoker implements Invoker
             );
             // extract variables into scope, include the file and return its output
             return include_isolated($path, $this->resolvePlaceholders($vars));
-        } catch (IncludeException $e) {
+        }
+        catch (IncludeException $e) {
             throw $e;
-        } catch (Throwable $th) {
+        }
+        catch (Throwable $th) {
             throw new IncludeException($file, $th, '');
         }
     }
@@ -240,11 +256,13 @@ class DefaultInvoker implements Invoker
     public function execute(callable $fn): mixed
     {
         try {
-            assert(is_string($fn) || $fn instanceof Closure, 'The provided callable must be a string or a Closure.');
+            if (!($fn instanceof Closure))
+                $fn = Closure::fromCallable($fn);
             $reflection = new ReflectionFunction($fn);
             // call with built arguments and return result
             return $reflection->invokeArgs($this->buildFunctionArguments($fn));
-        } catch (Throwable $th) {
+        }
+        catch (Throwable $th) {
             throw new ExecutionException($th);
         }
     }
@@ -273,7 +291,7 @@ class DefaultInvoker implements Invoker
     {
         return $this->container->cache->cache(
             'DefaultInvoker/' . $key,
-            $callback
+            $callback,
         );
     }
 
@@ -289,15 +307,18 @@ class DefaultInvoker implements Invoker
         if (is_string($fn)) {
             $reflection = new ReflectionFunction($fn);
             $cache_key = md5($fn);
-        } elseif ($fn instanceof Closure) {
+        }
+        elseif ($fn instanceof Closure) {
             $reflection = new ReflectionFunction($fn);
             $cache_key = null;
-        } elseif (is_array($fn)) {
+        }
+        elseif (is_array($fn)) {
             assert(is_string($fn[1]), 'The second element of the array must be a method name.');
             assert(is_object($fn[0]) || (is_string($fn[0]) && class_exists($fn[0])), 'The first element of the array must be a class name or an object.');
             $reflection = new ReflectionMethod($fn[0], $fn[1]);
             $cache_key = md5(serialize([$fn[0], $fn[1]]));
-        } else {
+        }
+        else {
             throw new InvalidArgumentException('The provided callable is not a valid function or method.');
         }
         if ($cache_key) {
@@ -309,7 +330,8 @@ class DefaultInvoker implements Invoker
                     return $this->doBuildFunctionArguments($reflection);
                 }
             );
-        } else {
+        }
+        else {
             $args = $this->doBuildFunctionArguments($reflection);
         }
         // return $args
@@ -329,7 +351,7 @@ class DefaultInvoker implements Invoker
         $args = [];
         foreach ($parameters as $param) {
             // get the type hint of the parameter
-            $type = (string)$param->getType();
+            $type = (string) $param->getType();
             assert(!empty($type), "The parameter {$param->getName()} does not have a type hint.");
             // if there is no ParameterValue attribute, we need to get the value
             // first look for a ParameterCategory attribute so we can determine the category
@@ -337,7 +359,8 @@ class DefaultInvoker implements Invoker
             if (count($attr) > 0) {
                 // if there is a ParameterCategory attribute, use its category
                 $category = $attr[0]->newInstance()->category;
-            } else {
+            }
+            else {
                 $category = 'default';
             }
             // look for a ConfigValue attribute and use it to get a value from Config if it exists
@@ -347,14 +370,14 @@ class DefaultInvoker implements Invoker
                 $types = $param->getType() instanceof ReflectionUnionType
                     ? $param->getType()->getTypes()
                     : [$param->getType()];
-                $types = array_map(fn($type) => (string)$type, $types);
+                $types = array_map(fn($type) => (string) $type, $types);
                 $args[] = new ConfigPlaceholder(
                     $attr->key,
                     $types,
                     $param->isOptional(),
                     $param->isOptional() ? $param->getDefaultValue() : null,
                     $param->allowsNull(),
-                    $category
+                    $category,
                 );
                 continue;
             }
@@ -362,7 +385,7 @@ class DefaultInvoker implements Invoker
             assert(class_exists($type), "The class $type does not exist for parameter {$param->getName()}.");
             $args[] = new ObjectPlaceholder(
                 $type,
-                $category
+                $category,
             );
         }
         return $args;
@@ -384,9 +407,11 @@ class DefaultInvoker implements Invoker
                         ? $this->container->config
                         : $this->container->get(Config::class, $arg->category);
                     if (!$config->has($arg->key)) {
-                        if (!$arg->is_optional) throw new RuntimeException("Config value for key $arg->key does not exist.");
+                        if (!$arg->is_optional)
+                            throw new RuntimeException("Config value for key $arg->key does not exist.");
                         $value = $arg->default;
-                    } else {
+                    }
+                    else {
                         $value = $config->get($arg->key);
                     }
                     // validate type
@@ -396,7 +421,7 @@ class DefaultInvoker implements Invoker
                 // arg must be an ObjectPlaceholder
                 return $this->container->get($arg->class, $arg->category);
             },
-            $args
+            $args,
         );
     }
 
@@ -410,7 +435,8 @@ class DefaultInvoker implements Invoker
      */
     protected function validateConfigValueType(mixed $value, string $key, array $types, bool $allowNull): void
     {
-        if (is_null($value) && $allowNull) return;
+        if (is_null($value) && $allowNull)
+            return;
         sort($types);
         $cache_key = md5(serialize([$value, $types]));
         $valid = $this->cache(
@@ -418,30 +444,33 @@ class DefaultInvoker implements Invoker
             function () use ($types, $value): bool {
                 foreach ($types as $type) {
                     $valid = match ($type) {
-                        'int' => is_int($value),
+                        'int'    => is_int($value),
                         'string' => is_string($value),
-                        'float' => is_float($value),
-                        'bool' => is_bool($value),
-                        'array' => is_array($value),
-                        'false' => $value === false,
-                        default => $value instanceof $type
+                        'float'  => is_float($value),
+                        'bool'   => is_bool($value),
+                        'array'  => is_array($value),
+                        'false'  => $value === false,
+                        default  => $value instanceof $type
                     };
-                    if ($valid) return true;
+                    if ($valid)
+                        return true;
                 }
                 return false;
             }
         );
         if (!$valid) {
             $typeString = implode('|', $types);
-            if ($allowNull) $typeString .= '|null';
+            if ($allowNull)
+                $typeString .= '|null';
             throw new ConfigTypeException(sprintf(
                 'Config value from "%s" expected to be of type %s, got %s',
                 $key,
                 $typeString,
-                get_debug_type($value)
+                get_debug_type($value),
             ));
         }
     }
+
 }
 
 /**
@@ -465,13 +494,15 @@ function include_isolated(string $path, array $vars): mixed
     try {
         extract($vars);
         $return = include $path;
-    } catch (Throwable $th) {
+    }
+    catch (Throwable $th) {
         $buffer = ob_get_contents() ?: 'Error: output buffering content unavailable.';
         ob_end_clean();
         throw new IncludeException($path, $th, $buffer);
     }
     $buffer = ob_get_contents();
     ob_end_clean();
-    if ($return === 1) return $buffer;
+    if ($return === 1)
+        return $buffer;
     return $return;
 }

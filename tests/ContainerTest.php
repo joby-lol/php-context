@@ -65,10 +65,10 @@ class ContainerTest extends TestCase
         // clone container
         $con2 = clone $con;
         $this->assertNotSame($con, $con2);
-        // verify that config is cloned but other core tools are not
+        // verify that config and invoker are cloned, but cache is shared
         $this->assertNotSame($con->config, $con2->config);
+        $this->assertNotSame($con->invoker, $con2->invoker);
         $this->assertSame($con->cache, $con2->cache);
-        $this->assertSame($con->invoker, $con2->invoker);
         // verify that all objects in $con2 are not the same as in $con
         $this->assertNotSame($con->get(TestClassA::class), $con2->get(TestClassA::class));
         $this->assertNotSame($con->get(TestClassB::class), $con2->get(TestClassB::class));

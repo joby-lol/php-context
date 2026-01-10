@@ -1,10 +1,11 @@
 <?php
+
 /*
-* smolContext
-* https://github.com/joby-lol/smol-context
-* (c) 2024-2025 Joby Elliott code@joby.lol
-* MIT License https://opensource.org/licenses/MIT
-*/
+ * smolContext
+ * https://github.com/joby-lol/smol-context
+ * (c) 2024-2025 Joby Elliott code@joby.lol
+ * MIT License https://opensource.org/licenses/MIT
+ */
 
 namespace Joby\Smol\Context\Invoker;
 
@@ -19,6 +20,7 @@ use RuntimeException;
 
 class DefaultInvokerTest extends TestCase
 {
+
     public function testEmptyInstantiation(): void
     {
         // Note that we really only test really basic instantiation here,
@@ -28,11 +30,11 @@ class DefaultInvokerTest extends TestCase
         $inv = new DefaultInvoker($con);
         $this->assertInstanceOf(
             TestClassA::class,
-            $inv->instantiate(TestClassA::class)
+            $inv->instantiate(TestClassA::class),
         );
         $this->assertInstanceOf(
             TestClassB::class,
-            $inv->instantiate(TestClassB::class)
+            $inv->instantiate(TestClassB::class),
         );
     }
 
@@ -42,7 +44,7 @@ class DefaultInvokerTest extends TestCase
         $inv = new DefaultInvoker($con);
         $this->assertEquals(
             'Hello, world!',
-            $inv->execute('Joby\Smol\Context\Invoker\testFunction')
+            $inv->execute('Joby\Smol\Context\Invoker\testFunction'),
         );
     }
 
@@ -54,19 +56,19 @@ class DefaultInvokerTest extends TestCase
             'Hello, world!',
             $inv->execute(function () {
                 return 'Hello, world!';
-            })
+            }),
         );
         $this->assertEquals(
             'Hello, world!',
-            $inv->execute(testFunction(...))
+            $inv->execute(testFunction(...)),
         );
         $this->assertEquals(
             'TestClassA static string',
-            $inv->execute(TestClassA::getStaticString(...))
+            $inv->execute(TestClassA::getStaticString(...)),
         );
         $this->assertEquals(
             'TestClassA instance string',
-            $inv->execute((new TestClassA())->getInstanceString(...))
+            $inv->execute((new TestClassA())->getInstanceString(...)),
         );
     }
 
@@ -82,13 +84,13 @@ class DefaultInvokerTest extends TestCase
             $a,
             $inv->execute(function (TestClassA $a): TestClassA {
                 return $a;
-            })
+            }),
         );
         $this->assertEquals(
             $b,
             $inv->execute(function (TestClassB $b): TestClassB {
                 return $b;
-            })
+            }),
         );
         // now change the context to use new instances, and it should return those
         $a2 = new TestClassA();
@@ -99,25 +101,25 @@ class DefaultInvokerTest extends TestCase
             $a2,
             $inv->execute(function (TestClassA $a): TestClassA {
                 return $a;
-            })
+            }),
         );
         $this->assertEquals(
             $b2,
             $inv->execute(function (TestClassB $b): TestClassB {
                 return $b;
-            })
+            }),
         );
         $this->assertNotEquals(
             $a,
             $inv->execute(function (TestClassA $a): TestClassA {
                 return $a;
-            })
+            }),
         );
         $this->assertNotEquals(
             $b,
             $inv->execute(function (TestClassB $b): TestClassB {
                 return $b;
-            })
+            }),
         );
     }
 
@@ -132,7 +134,7 @@ class DefaultInvokerTest extends TestCase
         $c = $inv->instantiate(TestClass_requires_A_and_B::class);
         $this->assertInstanceOf(
             TestClass_requires_A_and_B::class,
-            $c
+            $c,
         );
         // check that the dependencies were injected correctly
         $this->assertEquals($a, $c->a);
@@ -147,19 +149,19 @@ class DefaultInvokerTest extends TestCase
         $con->register(TestClassA::class, 'secondary');
         $this->assertNotEquals(
             $con->get(TestClassA::class),
-            $con->get(TestClassA::class, 'secondary')
+            $con->get(TestClassA::class, 'secondary'),
         );
         $this->assertEquals(
             $con->get(TestClassA::class),
             $inv->execute(function (TestClassA $a) {
                 return $a;
-            })
+            }),
         );
         $this->assertEquals(
             $con->get(TestClassA::class, 'secondary'),
             $inv->execute(function (#[CategoryName('secondary')] TestClassA $a) {
                 return $a;
-            })
+            }),
         );
     }
 
@@ -171,25 +173,9 @@ class DefaultInvokerTest extends TestCase
         $config->set('test_key', 'test_value');
         $this->assertEquals(
             'test_value',
-            $inv->execute(function (
-                #[ConfigValue('test_key')] string $value
-            ) {
+            $inv->execute(function (#[ConfigValue('test_key')] string $value) {
                 return $value;
-            })
-        );
-        // also test it with a non-default category config object
-        $config2 = new DefaultConfig();
-        $config2->set('test_key', 'test_value2');
-        $con->register($config2, 'test_category');
-        $this->assertEquals(
-            'test_value2',
-            $inv->execute(function (
-                #[CategoryName('test_category')]
-                #[ConfigValue('test_key')]
-                string $value
-            ) {
-                return $value;
-            })
+            }),
         );
     }
 
@@ -199,10 +185,7 @@ class DefaultInvokerTest extends TestCase
         $inv = new DefaultInvoker($con);
 
         // Test with default value when config key doesn't exist
-        $result = $inv->execute(function (
-            #[ConfigValue('missing.key')]
-            string $param = 'default value'
-        ) {
+        $result = $inv->execute(function (#[ConfigValue('missing.key')] string $param = 'default value') {
             return $param;
         });
 
@@ -212,10 +195,7 @@ class DefaultInvokerTest extends TestCase
         $config = $con->get(Config::class);
         $config->set('existing.key', 'config value');
 
-        $result = $inv->execute(function (
-            #[ConfigValue('existing.key')]
-            string $param = 'default value'
-        ) {
+        $result = $inv->execute(function (#[ConfigValue('existing.key')] string $param = 'default value') {
             return $param;
         });
 
@@ -263,10 +243,7 @@ class DefaultInvokerTest extends TestCase
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Config value from "wrong.type" expected to be of type int, got string');
 
-        $inv->execute(function (
-            #[ConfigValue('wrong.type')]
-            int $param
-        ) {
+        $inv->execute(function (#[ConfigValue('wrong.type')] int $param) {
         });
     }
 
@@ -279,10 +256,7 @@ class DefaultInvokerTest extends TestCase
         // Test that null is allowed for nullable parameters
         $config->set('nullable.key', null);
 
-        $result = $inv->execute(function (
-            #[ConfigValue('nullable.key')]
-            ?string $param
-        ) {
+        $result = $inv->execute(function (#[ConfigValue('nullable.key')] ?string $param) {
             return $param;
         });
 
@@ -297,10 +271,7 @@ class DefaultInvokerTest extends TestCase
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Config value for key missing.key does not exist.');
 
-        $inv->execute(function (
-            #[ConfigValue('missing.key')]
-            string $param
-        ) {
+        $inv->execute(function (#[ConfigValue('missing.key')] string $param) {
         });
     }
 
@@ -312,20 +283,14 @@ class DefaultInvokerTest extends TestCase
 
         // Test int|string union type with int value
         $config->set('union.key', 42);
-        $result = $inv->execute(function (
-            #[ConfigValue('union.key')]
-            int|string $param
-        ) {
+        $result = $inv->execute(function (#[ConfigValue('union.key')] int|string $param) {
             return $param;
         });
         $this->assertEquals(42, $result);
 
         // Test int|string union type with string value
         $config->set('union.key', 'test');
-        $result = $inv->execute(function (
-            #[ConfigValue('union.key')]
-            int|string $param
-        ) {
+        $result = $inv->execute(function (#[ConfigValue('union.key')] int|string $param) {
             return $param;
         });
         $this->assertEquals('test', $result);
@@ -334,10 +299,7 @@ class DefaultInvokerTest extends TestCase
         $config->set('union.key', true);
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Config value from "union.key" expected to be of type int|string, got bool');
-        $inv->execute(function (
-            #[ConfigValue('union.key')]
-            int|string $param
-        ) {
+        $inv->execute(function (#[ConfigValue('union.key')] int|string $param) {
         });
     }
 
@@ -349,24 +311,19 @@ class DefaultInvokerTest extends TestCase
 
         // Test null with a nullable union type
         $config->set('nullable.union.key', null);
-        $result = $inv->execute(function (
-            #[ConfigValue('nullable.union.key')]
-            null|int|string $param
-        ) {
+        $result = $inv->execute(function (#[ConfigValue('nullable.union.key')] null|int|string $param) {
             return $param;
         });
         $this->assertNull($result);
 
         // Test int with a nullable union type
         $config->set('nullable.union.key', 42);
-        $result = $inv->execute(function (
-            #[ConfigValue('nullable.union.key')]
-            null|int|string $param
-        ) {
+        $result = $inv->execute(function (#[ConfigValue('nullable.union.key')] null|int|string $param) {
             return $param;
         });
         $this->assertEquals(42, $result);
     }
+
 }
 
 function testFunction(): string

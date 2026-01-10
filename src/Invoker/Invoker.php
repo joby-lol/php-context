@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Context Injection
  * https://github.com/joby-lol/php-context
@@ -23,6 +24,7 @@ use Joby\Smol\Context\Container;
  */
 interface Invoker
 {
+
     public function __construct(Container $container);
 
     /**
@@ -59,7 +61,7 @@ interface Invoker
      * Because docblock tags don't support Attributes, their equivalents are just parsed as strings.
      * Core attributes are available by inserting strings that look like them on lines preceding a var tag. The
      * actual Attribute classes need not be included, because this system just looks for strings that
-     * look like `#[CategoryName("category_name")]` or `[ConfigValue("config_key")]`.
+     * look like `#[CategoryName("category_name")]` or `#[ConfigValue("config_key")]`.
      *
      * This method will return either the output of the included file, or the value returned by it if there is one.
      * Note that if the included script explicitly returns the integer "1" that cannot be differentiated from returning
@@ -69,4 +71,5 @@ interface Invoker
      * @throws IncludeException if an error occurs while including the file
      */
     public function include(string $file): mixed;
+
 }

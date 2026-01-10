@@ -1,10 +1,11 @@
 <?php
+
 /*
-* smolContext
-* https://github.com/joby-lol/smol-context
-* (c) 2024-2025 Joby Elliott code@joby.lol
-* MIT License https://opensource.org/licenses/MIT
-*/
+ * smolContext
+ * https://github.com/joby-lol/smol-context
+ * (c) 2024-2025 Joby Elliott code@joby.lol
+ * MIT License https://opensource.org/licenses/MIT
+ */
 
 namespace Joby\Smol\Context\Cache;
 
@@ -14,8 +15,10 @@ use Psr\SimpleCache\CacheInterface;
 
 abstract class AbstractCacheTestCase extends TestCase
 {
+
     private Backends\CacheBackend $cache;
-    private $simulatedTime = 1;
+
+    private                       $simulatedTime = 1;
 
     abstract protected function doCreateCacheInstance(int|null $defaultTtl = 3600): Backends\CacheBackend;
 
@@ -85,6 +88,16 @@ abstract class AbstractCacheTestCase extends TestCase
         $this->assertNull($this->cache->get('foo'));
     }
 
+    public function testDateIntervalTtlWithMinutes()
+    {
+        $interval = new DateInterval('PT2M'); // 2 minutes
+        $this->cache->set('foo', 'bar', $interval);
+        $this->assertEquals('bar', $this->cache->get('foo'));
+
+        $this->simulateTimePassage(121); // Simulate 121 seconds passing
+        $this->assertNull($this->cache->get('foo'));
+    }
+
     public function testGetMultiple()
     {
         $this->cache->set('key1', 'value1');
@@ -92,8 +105,8 @@ abstract class AbstractCacheTestCase extends TestCase
 
         $values = $this->cache->getMultiple(['key1', 'key2', 'nonexistent']);
         $expected = [
-            'key1' => 'value1',
-            'key2' => 'value2',
+            'key1'        => 'value1',
+            'key2'        => 'value2',
             'nonexistent' => null,
         ];
 
@@ -102,7 +115,7 @@ abstract class AbstractCacheTestCase extends TestCase
         // Test with default value
         $values = $this->cache->getMultiple(['key1', 'nonexistent'], 'default');
         $expected = [
-            'key1' => 'value1',
+            'key1'        => 'value1',
             'nonexistent' => 'default',
         ];
         $this->assertEquals($expected, $values);
@@ -173,4 +186,5 @@ abstract class AbstractCacheTestCase extends TestCase
         $this->simulatedTime += $seconds;
         $this->cache->setCurrentTime($this->simulatedTime);
     }
+
 }

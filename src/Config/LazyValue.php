@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Context Injection
  * https://github.com/joby-lol/php-context
@@ -14,12 +15,15 @@ namespace Joby\Smol\Context\Config;
  */
 class LazyValue implements ConfigValue
 {
+
     /**
      * @var callable
      */
     protected readonly mixed $callback;
-    protected bool $run = false;
-    protected mixed $value;
+
+    protected bool           $run      = false;
+
+    protected mixed          $value;
 
     public function __construct(
         callable $callback,
@@ -30,10 +34,13 @@ class LazyValue implements ConfigValue
 
     public function value(Config $config): mixed
     {
-        if (!$this->run) {
-            $this->run = true;
-            $this->value = call_user_func($this->callback, $config);
+        if ($this->run) {
+            return $this->value;
         }
-        return $this->value;
+        $value = call_user_func($this->callback, $config);
+        $this->value = $value;
+        $this->run = true;
+        return $value;
     }
+
 }

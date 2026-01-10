@@ -1,10 +1,11 @@
 <?php
+
 /*
-* smolContext
-* https://github.com/joby-lol/smol-context
-* (c) 2024-2025 Joby Elliott code@joby.lol
-* MIT License https://opensource.org/licenses/MIT
-*/
+ * smolContext
+ * https://github.com/joby-lol/smol-context
+ * (c) 2024-2025 Joby Elliott code@joby.lol
+ * MIT License https://opensource.org/licenses/MIT
+ */
 
 use Joby\Smol\Context\ContainerException;
 use Joby\Smol\Context\Context;
@@ -50,7 +51,8 @@ function ctx(string $class, string $category = 'default'): object
  */
 function ctx_new(string|object $class): object
 {
-    if (is_object($class)) $class = get_class($class);
+    if (is_object($class))
+        $class = get_class($class);
     return Context::new($class);
 }
 
@@ -100,7 +102,7 @@ function ctx_execute(callable $fn): mixed
  *  Because docblock tags don't support Attributes, their equivalents are just parsed as strings.
  *  Core attributes are available by inserting strings that look like them on lines preceding a var tag. The
  *  actual Attribute classes need not be included, because this system just looks for strings that
- *  look like `#[CategoryName("category_name")]` or `[ConfigValue("config_key")]`.
+ *  look like `#[CategoryName("category_name")]` or `#[ConfigValue("config_key")]`.
  *
  *  This method will return either the output of the included file, or the value returned by it if there is one.
  *  Note that if the included script explicitly returns the integer "1" that cannot be differentiated from returning
